@@ -82,6 +82,10 @@ export default function RootLayout() {
           options={{ title: 'Centinel - Acceso', headerShown: false }}
         />
         <Stack.Screen
+          name="(auth)/register"
+          options={{ title: 'Registro de Estudiante', headerShown: true }}
+        />
+        <Stack.Screen
           name="(auth)/forgot-password"
           options={{ title: 'Recuperar Contraseña', headerShown: true }}
         />

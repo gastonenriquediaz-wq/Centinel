@@ -147,6 +147,19 @@ export default function LoginScreen() {
             onPress={() => router.push('/(auth)/forgot-password')}
             style={styles.forgotButton}
           />
+
+          <View style={styles.dividerBox}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>¿Sos estudiante nuevo?</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Button
+            title="Registrarse con Código QR"
+            variant="secondary"
+            onPress={() => router.push('/(auth)/register')}
+            style={styles.registerButton}
+          />
         </Card>
 
         <View style={styles.footerNotice}>
@@ -203,6 +216,27 @@ const styles = StyleSheet.create({
   },
   forgotButton: {
     marginTop: 12,
+  },
+  dividerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 18,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#CBD5E1',
+  },
+  dividerText: {
+    fontSize: 12,
+    color: '#64748B',
+    paddingHorizontal: 10,
+    fontWeight: '500',
+  },
+  registerButton: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#94A3B8',
+    borderWidth: 1,
   },
   alertBoxError: {
     backgroundColor: '#FEF2F2',
