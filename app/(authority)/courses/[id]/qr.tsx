@@ -7,7 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import QRCodeSVG from 'react-native-qrcode-svg';
+import { NativeQRCode } from '../../../../src/components/ui/NativeQRCode';
 import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
 import { useAuthStore } from '../../../../src/store/auth.store';
@@ -125,7 +125,7 @@ export default function CourseQRScreen() {
             ) : (
               <>
                 <View style={styles.qrBox}>
-                  <QRCodeSVG
+                  <NativeQRCode
                     value={qrData.code_token}
                     size={240}
                     color="#0F172A"
