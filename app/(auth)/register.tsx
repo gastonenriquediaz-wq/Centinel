@@ -133,6 +133,7 @@ export default function StudentRegisterScreen() {
 
       // 2. Completar perfil en PostgreSQL via RPC atómica
       const regResult = await CoursesService.completeRegistration({
+        userId: authData.user.id,
         token: qrToken,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -148,7 +149,9 @@ export default function StudentRegisterScreen() {
       await supabase.auth.signOut();
       setPhase('success');
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error al completar el registro.');
+      const msg = err.message || 'Error al completar el registro.';
+      setErrorMessage(msg);
+      Alert.alert('No se pudo registrar', msg);
     } finally {
       setRegistering(false);
     }

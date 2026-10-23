@@ -137,8 +137,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Función 6.2: Completar registro del estudiante vinculando el usuario autenticado
+-- Función 6.2: Completar registro del estudiante vinculando el usuario
 CREATE OR REPLACE FUNCTION public.complete_student_registration(
+  p_user_id uuid,
   p_token uuid,
   p_first_name text,
   p_last_name text,
@@ -148,12 +149,10 @@ CREATE OR REPLACE FUNCTION public.complete_student_registration(
 RETURNS jsonb AS $$
 DECLARE
   v_val jsonb;
-  v_user_id uuid;
   v_dni_trimmed text;
 BEGIN
-  v_user_id := auth.uid();
-  IF v_user_id IS NULL THEN
-    RETURN jsonb_build_object('success', false, 'error', 'Sesión de usuario no válida.');
+  IF p_user_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Identificador de usuario no válido.');
   END IF;
 
   v_dni_trimmed := trim(p_dni);
@@ -170,7 +169,7 @@ BEGIN
     WHERE institution_id = (v_val->>'institution_id')::uuid
       AND dni = v_dni_trimmed
       AND account_status IN ('pending', 'approved', 'suspended')
-      AND id <> v_user_id
+      AND id <> p_user_id
   ) THEN
     RETURN jsonb_build_object('success', false, 'error', 'El documento ingresado ya se encuentra registrado o en trámite en esta institución.');
   END IF;
@@ -187,7 +186,7 @@ BEGIN
     birth_date,
     account_status
   ) VALUES (
-    v_user_id,
+    p_user_id,
     (v_val->>'institution_id')::uuid,
     (v_val->>'course_id')::uuid,
     'student',

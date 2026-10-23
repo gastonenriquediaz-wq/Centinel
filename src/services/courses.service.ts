@@ -113,6 +113,7 @@ export const CoursesService = {
    * Completa el registro del estudiante a través del backend de forma atómica.
    */
   async completeRegistration(params: {
+    userId: string;
     token: string;
     firstName: string;
     lastName: string;
@@ -120,6 +121,7 @@ export const CoursesService = {
     birthDate: string;
   }): Promise<{ success: boolean; error?: string }> {
     const { data, error } = await supabase.rpc('complete_student_registration', {
+      p_user_id: params.userId,
       p_token: params.token,
       p_first_name: params.firstName,
       p_last_name: params.lastName,
