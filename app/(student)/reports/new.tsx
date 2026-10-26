@@ -9,7 +9,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Card } from '../../../src/components/ui/Card';
 import { Input } from '../../../src/components/ui/Input';
@@ -44,24 +44,103 @@ const LOCATIONS = [
   'Otro lugar',
 ];
 
+interface AggressorItem {
+  name: string;
+  courseDivision: string;
+}
+
 export default function NewReportScreen() {
   const { profile, institution } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form State
-  const [situationType, setSituationType] = useState('');
+  // --- PASO 1 STATE ---
+  // ¿Quién es la persona afectada?
+  const [affectedPersonType, setAffectedPersonType] = useState<'me' | 'other' | ''>('');
+  // ¿Qué tipo de situación deseas comunicar? (Multi-select)
+  const [selectedSituations, setSelectedSituations] = useState<string[]>([]);
   const [customSituation, setCustomSituation] = useState('');
-  const [location, setLocation] = useState('');
+  // ¿Dónde ocurrió o suele ocurrir? (Multi-select)
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [customLocation, setCustomLocation] = useState('');
-  const [occurredAtDate, setOccurredAtDate] = useState(new Date().toISOString().split('T')[0]);
+  // Frecuencia
   const [frequency, setFrequency] = useState('');
-  const [involvedPersons, setInvolvedPersons] = useState('');
+  const [occurredAtDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // --- PASO 2 STATE ---
+  // 1_ ¿Quién sufrió la situación?
+  const [affectedPersonOption, setAffectedPersonOption] = useState<'me_affected' | 'other_affected' | ''>('');
+  const [affectedPersonOtherName, setAffectedPersonOtherName] = useState('');
+
+  // 2_ ¿Quiénes realizaron las agresiones?
+  const [aggressorsType, setAggressorsType] = useState<'unknown' | 'known' | ''>('');
+  const [aggressorsList, setAggressorsList] = useState<AggressorItem[]>([
+    { name: '', courseDivision: '' },
+  ]);
+
+  // 3_ ¿Alguien vio lo que pasó? (Testigos opcionales)
+  const [witnessesList, setWitnessesList] = useState<string[]>([]);
+
+  // 4_ Descripción de lo sucedido
   const [description, setDescription] = useState('');
+
+  // --- PASO 3 STATE ---
   const [attachments, setAttachments] = useState<AttachmentInput[]>([]);
+
+  // --- PASO 4 STATE ---
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
 
-  // Selector de multimedia
+  // Manejo de multi-select en situaciones
+  const toggleSituation = (type: string) => {
+    if (selectedSituations.includes(type)) {
+      setSelectedSituations(selectedSituations.filter((s) => s !== type));
+    } else {
+      setSelectedSituations([...selectedSituations, type]);
+    }
+  };
+
+  // Manejo de multi-select en ubicaciones
+  const toggleLocation = (loc: string) => {
+    if (selectedLocations.includes(loc)) {
+      setSelectedLocations(selectedLocations.filter((l) => l !== loc));
+    } else {
+      setSelectedLocations([...selectedLocations, loc]);
+    }
+  };
+
+  // Manejo de lista dinámica de agresores
+  const handleAggressorChange = (index: number, field: keyof AggressorItem, value: string) => {
+    const updated = [...aggressorsList];
+    updated[index][field] = value;
+    setAggressorsList(updated);
+  };
+
+  const addAggressor = () => {
+    setAggressorsList([...aggressorsList, { name: '', courseDivision: '' }]);
+  };
+
+  const removeAggressor = (index: number) => {
+    if (aggressorsList.length > 1) {
+      setAggressorsList(aggressorsList.filter((_, i) => i !== index));
+    }
+  };
+
+  // Manejo de lista dinámica de testigos
+  const handleWitnessChange = (index: number, value: string) => {
+    const updated = [...witnessesList];
+    updated[index] = value;
+    setWitnessesList(updated);
+  };
+
+  const addWitness = () => {
+    setWitnessesList([...witnessesList, '']);
+  };
+
+  const removeWitness = (index: number) => {
+    setWitnessesList(witnessesList.filter((_, i) => i !== index));
+  };
+
+  // Selector de multimedia (Paso 3)
   const pickMedia = async (mediaType: 'image' | 'video') => {
     try {
       const currentImages = attachments.filter((a) => a.type === 'image');
@@ -90,9 +169,8 @@ export default function NewReportScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const fileSize = asset.fileSize || 1024 * 500; // Aproximado si el OS no lo expone
+        const fileSize = asset.fileSize || 1024 * 500;
 
-        // Validar tamaño individual y límites acumulados
         if (mediaType === 'image') {
           const newTotalImgSize = currentImages.reduce((sum, a) => sum + a.size, 0) + fileSize;
           if (newTotalImgSize > 25 * 1024 * 1024) {
@@ -124,42 +202,124 @@ export default function NewReportScreen() {
     setAttachments(attachments.filter((_, i) => i !== index));
   };
 
-  // Cálculos de tamaños de archivos
   const totalSizeBytes = attachments.reduce((sum, a) => sum + a.size, 0);
   const totalSizeMB = (totalSizeBytes / (1024 * 1024)).toFixed(1);
 
-  // Navegación de pasos y validaciones
+  // Validación y navegación
   const handleNext = () => {
     if (currentStep === 1) {
-      const selectedType = situationType === 'Otro tipo de situación' ? customSituation : situationType;
-      const selectedLoc = location === 'Otro lugar' ? customLocation : location;
-
-      if (!selectedType.trim()) {
-        Alert.alert('Campo requerido', 'Por favor selecciona o especifica el tipo de situación.');
+      if (!affectedPersonType) {
+        Alert.alert('Campo requerido', 'Por favor indica quién es la persona afectada.');
         return;
       }
-      if (!selectedLoc.trim()) {
-        Alert.alert('Campo requerido', 'Por favor selecciona o especifica el lugar del hecho.');
+      if (selectedSituations.length === 0) {
+        Alert.alert('Campo requerido', 'Por favor selecciona al menos un tipo de situación.');
+        return;
+      }
+      if (selectedSituations.includes('Otro tipo de situación') && !customSituation.trim()) {
+        Alert.alert('Campo requerido', 'Por favor especifica el tipo de situación.');
+        return;
+      }
+      if (selectedLocations.length === 0) {
+        Alert.alert('Campo requerido', 'Por favor selecciona al menos un lugar.');
+        return;
+      }
+      if (selectedLocations.includes('Otro lugar') && !customLocation.trim()) {
+        Alert.alert('Campo requerido', 'Por favor especifica el lugar del hecho.');
         return;
       }
       if (!frequency) {
         Alert.alert('Campo requerido', 'Por favor selecciona con qué frecuencia ocurre la situación.');
         return;
       }
+
+      // Pre-poblar Paso 2 (1_ Quién sufrió la situación) según lo marcado en Paso 1 si aún no se eligió
+      if (!affectedPersonOption) {
+        if (affectedPersonType === 'me') {
+          setAffectedPersonOption('me_affected');
+        } else {
+          setAffectedPersonOption('other_affected');
+        }
+      }
+
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      if (!involvedPersons.trim()) {
-        Alert.alert('Campo requerido', 'Por favor indica las personas involucradas o testigos.');
+      // 1_ Quién sufrió la situación
+      if (!affectedPersonOption) {
+        Alert.alert('Campo requerido', 'Por favor indica quién sufrió la situación.');
         return;
       }
+      if (affectedPersonOption === 'other_affected' && !affectedPersonOtherName.trim()) {
+        Alert.alert('Campo requerido', 'Por favor ingresa el nombre y apellido de la persona afectada.');
+        return;
+      }
+
+      // 2_ Quiénes realizaron las agresiones
+      if (!aggressorsType) {
+        Alert.alert('Campo requerido', 'Por favor indica si conoces a quiénes realizaron las agresiones.');
+        return;
+      }
+      if (aggressorsType === 'known') {
+        const hasValidAggressor = aggressorsList.some((a) => a.name.trim().length > 0);
+        if (!hasValidAggressor) {
+          Alert.alert('Campo requerido', 'Por favor ingresa al menos un nombre, apellido o apodo del agresor.');
+          return;
+        }
+      }
+
+      // 4_ Descripción
       if (!description.trim() || description.trim().length < 15) {
         Alert.alert('Descripción insuficiente', 'Por favor proporciona una descripción detallada de lo sucedido (mínimo 15 caracteres).');
         return;
       }
+
       setCurrentStep(3);
     } else if (currentStep === 3) {
       setCurrentStep(4);
     }
+  };
+
+  // Generar cadenas formateadas para guardar en la base de datos
+  const getFormattedSituations = () => {
+    return selectedSituations
+      .map((s) => (s === 'Otro tipo de situación' ? `Otro: ${customSituation.trim()}` : s))
+      .join(', ');
+  };
+
+  const getFormattedLocations = () => {
+    return selectedLocations
+      .map((l) => (l === 'Otro lugar' ? `Otro: ${customLocation.trim()}` : l))
+      .join(', ');
+  };
+
+  const getFormattedInvolvedPersons = () => {
+    const parts: string[] = [];
+
+    // Persona afectada
+    if (affectedPersonOption === 'me_affected') {
+      parts.push('Afectado: El propio estudiante que reporta');
+    } else {
+      parts.push(`Afectado: ${affectedPersonOtherName.trim()}`);
+    }
+
+    // Agresores
+    if (aggressorsType === 'unknown') {
+      parts.push('Agresores: No identificados / Se desconoce quiénes fueron');
+    } else {
+      const validAggressors = aggressorsList
+        .filter((a) => a.name.trim().length > 0)
+        .map((a) => `${a.name.trim()}${a.courseDivision.trim() ? ` (${a.courseDivision.trim()})` : ''}`)
+        .join('; ');
+      parts.push(`Agresores: ${validAggressors}`);
+    }
+
+    // Testigos
+    const validWitnesses = witnessesList.filter((w) => w.trim().length > 0);
+    if (validWitnesses.length > 0) {
+      parts.push(`Testigos: ${validWitnesses.map((w) => w.trim()).join('; ')}`);
+    }
+
+    return parts.join(' | ');
   };
 
   const handleSubmit = async () => {
@@ -175,19 +335,20 @@ export default function NewReportScreen() {
 
     setIsSubmitting(true);
     try {
-      const finalSituation = situationType === 'Otro tipo de situación' ? customSituation : situationType;
-      const finalLocation = location === 'Otro lugar' ? customLocation : location;
+      const finalSituations = getFormattedSituations();
+      const finalLocations = getFormattedLocations();
+      const finalInvolvedPersons = getFormattedInvolvedPersons();
 
       const { data, error } = await ReportsService.createReport(
         {
           institution_id: institution.id,
           course_id: profile.course_id,
           student_id: profile.id,
-          situation_type: finalSituation,
-          location: finalLocation,
+          situation_type: finalSituations,
+          location: finalLocations,
           occurred_at: new Date(occurredAtDate).toISOString(),
           frequency: frequency,
-          involved_persons: involvedPersons,
+          involved_persons: finalInvolvedPersons,
           description: description,
         },
         attachments
@@ -215,6 +376,9 @@ export default function NewReportScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* Ocultar encabezado de navegación nativo que mostraba "(Student)/reports/new" */}
+      <Stack.Screen options={{ headerShown: false }} />
+
       {/* Indicador de pasos */}
       <View style={styles.stepIndicator}>
         {[1, 2, 3, 4].map((step) => (
@@ -239,28 +403,55 @@ export default function NewReportScreen() {
       </View>
       <Text style={styles.stepSubtitle}>
         {currentStep === 1 && 'Paso 1: Clasificación y Lugar'}
-        {currentStep === 2 && 'Paso 2: Relato y Personas'}
+        {currentStep === 2 && 'Paso 2: Personas y Relato'}
         {currentStep === 3 && 'Paso 3: Evidencia Multimedia (Opcional)'}
         {currentStep === 4 && 'Paso 4: Confirmación y Envío'}
       </Text>
 
-      {/* PASO 1 */}
+      {/* ===================== PASO 1 ===================== */}
       {currentStep === 1 && (
         <View style={styles.stepContainer}>
+          {/* Nueva pregunta: ¿Quién es la persona afectada? */}
+          <Card style={styles.card}>
+            <Text style={styles.label}>¿Quién es la persona afectada?</Text>
+            <TouchableOpacity
+              style={[styles.radioItem, affectedPersonType === 'me' && styles.radioItemSelected]}
+              onPress={() => setAffectedPersonType('me')}
+            >
+              <View style={[styles.radioDot, affectedPersonType === 'me' && styles.radioDotSelected]} />
+              <Text style={styles.radioText}>Me ocurre a mí</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.radioItem, affectedPersonType === 'other' && styles.radioItemSelected]}
+              onPress={() => setAffectedPersonType('other')}
+            >
+              <View style={[styles.radioDot, affectedPersonType === 'other' && styles.radioDotSelected]} />
+              <Text style={styles.radioText}>Le ocurre a otra persona</Text>
+            </TouchableOpacity>
+          </Card>
+
+          {/* ¿Qué tipo de situación deseas comunicar? (Multi-select) */}
           <Card style={styles.card}>
             <Text style={styles.label}>¿Qué tipo de situación deseas comunicar?</Text>
-            {SITUATION_TYPES.map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={[styles.radioItem, situationType === type && styles.radioItemSelected]}
-                onPress={() => setSituationType(type)}
-              >
-                <View style={[styles.radioDot, situationType === type && styles.radioDotSelected]} />
-                <Text style={styles.radioText}>{type}</Text>
-              </TouchableOpacity>
-            ))}
+            <Text style={styles.multiSelectHelp}>(Puedes marcar más de una opción)</Text>
+            {SITUATION_TYPES.map((type) => {
+              const isChecked = selectedSituations.includes(type);
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.checkboxRow, isChecked && styles.checkboxRowSelected]}
+                  onPress={() => toggleSituation(type)}
+                >
+                  <View style={[styles.checkboxSquare, isChecked && styles.checkboxSquareSelected]}>
+                    {isChecked && <Text style={styles.checkmarkIcon}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxText}>{type}</Text>
+                </TouchableOpacity>
+              );
+            })}
 
-            {situationType === 'Otro tipo de situación' && (
+            {selectedSituations.includes('Otro tipo de situación') && (
               <Input
                 label="Especifica el tipo de situación"
                 placeholder="Escribe aquí el tipo..."
@@ -271,20 +462,27 @@ export default function NewReportScreen() {
             )}
           </Card>
 
+          {/* ¿Dónde ocurrió o suele ocurrir? (Multi-select) */}
           <Card style={styles.card}>
             <Text style={styles.label}>¿Dónde ocurrió o suele ocurrir?</Text>
-            {LOCATIONS.map((loc) => (
-              <TouchableOpacity
-                key={loc}
-                style={[styles.radioItem, location === loc && styles.radioItemSelected]}
-                onPress={() => setLocation(loc)}
-              >
-                <View style={[styles.radioDot, location === loc && styles.radioDotSelected]} />
-                <Text style={styles.radioText}>{loc}</Text>
-              </TouchableOpacity>
-            ))}
+            <Text style={styles.multiSelectHelp}>(Puedes marcar más de una opción)</Text>
+            {LOCATIONS.map((loc) => {
+              const isChecked = selectedLocations.includes(loc);
+              return (
+                <TouchableOpacity
+                  key={loc}
+                  style={[styles.checkboxRow, isChecked && styles.checkboxRowSelected]}
+                  onPress={() => toggleLocation(loc)}
+                >
+                  <View style={[styles.checkboxSquare, isChecked && styles.checkboxSquareSelected]}>
+                    {isChecked && <Text style={styles.checkmarkIcon}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxText}>{loc}</Text>
+                </TouchableOpacity>
+              );
+            })}
 
-            {location === 'Otro lugar' && (
+            {selectedLocations.includes('Otro lugar') && (
               <Input
                 label="Especifica el lugar"
                 placeholder="Escribe el lugar aquí..."
@@ -295,6 +493,7 @@ export default function NewReportScreen() {
             )}
           </Card>
 
+          {/* Frecuencia */}
           <Card style={styles.card}>
             <Text style={styles.label}>¿Con qué frecuencia ocurre?</Text>
             {FREQUENCIES.map((freq) => (
@@ -309,30 +508,144 @@ export default function NewReportScreen() {
             ))}
           </Card>
 
-          <Button title="Continuar al Paso 2" onPress={handleNext} style={styles.navButton} />
+          <View style={styles.rowButtons}>
+            <Button
+              title="Cancelar"
+              variant="outline"
+              onPress={() => router.back()}
+              style={styles.halfButton}
+            />
+            <Button title="Continuar al Paso 2" onPress={handleNext} style={styles.halfButton} />
+          </View>
         </View>
       )}
 
-      {/* PASO 2 */}
+      {/* ===================== PASO 2 ===================== */}
       {currentStep === 2 && (
         <View style={styles.stepContainer}>
+          {/* 1_ ¿Quién sufrió la situación? */}
           <Card style={styles.card}>
-            <Input
-              label="Personas involucradas o testigos"
-              placeholder="Ej: Nombres, apodos, cursos de quienes participaron o presenciaron el hecho..."
-              value={involvedPersons}
-              onChangeText={setInvolvedPersons}
-              multiline
-              numberOfLines={3}
-            />
-            <Text style={styles.helperText}>
-              Indica con la mayor precisión posible a las personas para que las autoridades puedan investigar.
-            </Text>
+            <Text style={styles.label}>1_ ¿Quién sufrió la situación?</Text>
+            <TouchableOpacity
+              style={[styles.radioItem, affectedPersonOption === 'me_affected' && styles.radioItemSelected]}
+              onPress={() => setAffectedPersonOption('me_affected')}
+            >
+              <View style={[styles.radioDot, affectedPersonOption === 'me_affected' && styles.radioDotSelected]} />
+              <Text style={styles.radioText}>Yo soy una de las personas afectadas</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.radioItem, affectedPersonOption === 'other_affected' && styles.radioItemSelected]}
+              onPress={() => setAffectedPersonOption('other_affected')}
+            >
+              <View style={[styles.radioDot, affectedPersonOption === 'other_affected' && styles.radioDotSelected]} />
+              <Text style={styles.radioText}>Es otra la persona afectada</Text>
+            </TouchableOpacity>
+
+            {affectedPersonOption === 'other_affected' && (
+              <Input
+                label="Nombre y apellido de la persona afectada"
+                placeholder="Ingresa aquí nombre y apellido..."
+                value={affectedPersonOtherName}
+                onChangeText={setAffectedPersonOtherName}
+                style={styles.customInput}
+              />
+            )}
           </Card>
 
+          {/* 2_ ¿Quiénes realizaron las agresiones? */}
           <Card style={styles.card}>
+            <Text style={styles.label}>2_ ¿Quiénes realizaron las agresiones?</Text>
+            <TouchableOpacity
+              style={[styles.radioItem, aggressorsType === 'unknown' && styles.radioItemSelected]}
+              onPress={() => setAggressorsType('unknown')}
+            >
+              <View style={[styles.radioDot, aggressorsType === 'unknown' && styles.radioDotSelected]} />
+              <Text style={styles.radioText}>No sé quiénes fueron</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.radioItem, aggressorsType === 'known' && styles.radioItemSelected]}
+              onPress={() => setAggressorsType('known')}
+            >
+              <View style={[styles.radioDot, aggressorsType === 'known' && styles.radioDotSelected]} />
+              <Text style={styles.radioText}>Las personas involucradas son:</Text>
+            </TouchableOpacity>
+
+            {aggressorsType === 'known' && (
+              <View style={styles.dynamicListContainer}>
+                {aggressorsList.map((aggressor, index) => (
+                  <View key={index} style={styles.dynamicItemCard}>
+                    <View style={styles.dynamicItemHeader}>
+                      <Text style={styles.dynamicItemTitle}>Involucrado #{index + 1}</Text>
+                      {aggressorsList.length > 1 && (
+                        <TouchableOpacity onPress={() => removeAggressor(index)}>
+                          <Text style={styles.removeText}>Eliminar</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <Input
+                      label="Nombre, apellido o apodo"
+                      placeholder="Ej: Juan Pérez / 'El Flaco'"
+                      value={aggressor.name}
+                      onChangeText={(val) => handleAggressorChange(index, 'name', val)}
+                    />
+                    <Input
+                      label="Curso o división (si lo conoces)"
+                      placeholder="Ej: 3° 2da / No lo sé"
+                      value={aggressor.courseDivision}
+                      onChangeText={(val) => handleAggressorChange(index, 'courseDivision', val)}
+                      style={styles.inputSpacing}
+                    />
+                  </View>
+                ))}
+
+                <Button
+                  title="+ Agregar otro involucrado"
+                  variant="outline"
+                  onPress={addAggressor}
+                  style={styles.addDynamicButton}
+                />
+              </View>
+            )}
+          </Card>
+
+          {/* 3_ ¿Alguien vio lo que pasó? (Testigos) */}
+          <Card style={styles.card}>
+            <Text style={styles.label}>3_ ¿Alguien vio lo que pasó?</Text>
+            <Text style={styles.helperTextNotice}>
+              Si conocés testigos, podés indicarlos. No es obligatorio.
+            </Text>
+
+            {witnessesList.map((witness, index) => (
+              <View key={index} style={styles.witnessRow}>
+                <View style={styles.witnessInputWrapper}>
+                  <Input
+                    label={`Testigo #${index + 1}`}
+                    placeholder="Nombre, apellido o apodo"
+                    value={witness}
+                    onChangeText={(val) => handleWitnessChange(index, val)}
+                  />
+                </View>
+                <TouchableOpacity onPress={() => removeWitness(index)} style={styles.removeWitnessBtn}>
+                  <Text style={styles.removeWitnessText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            <Button
+              title="+ Agregar testigo"
+              variant="outline"
+              onPress={addWitness}
+              style={styles.addDynamicButton}
+            />
+          </Card>
+
+          {/* 4_ Descripción de lo sucedido */}
+          <Card style={styles.card}>
+            <Text style={styles.label}>4_ Descripción de lo sucedido</Text>
             <Input
-              label="Descripción de lo sucedido"
+              label="Detalle de lo ocurrido"
               placeholder="Describe lo ocurrido con el mayor detalle posible: qué pasó, cuándo comenzó, qué se dijeron o hicieron..."
               value={description}
               onChangeText={setDescription}
@@ -358,7 +671,7 @@ export default function NewReportScreen() {
         </View>
       )}
 
-      {/* PASO 3 */}
+      {/* ===================== PASO 3 ===================== */}
       {currentStep === 3 && (
         <View style={styles.stepContainer}>
           <Card style={styles.card}>
@@ -437,24 +750,26 @@ export default function NewReportScreen() {
         </View>
       )}
 
-      {/* PASO 4 */}
+      {/* ===================== PASO 4 ===================== */}
       {currentStep === 4 && (
         <View style={styles.stepContainer}>
           <Card style={styles.summaryCard}>
             <Text style={styles.summaryHeader}>Resumen de la Comunicación</Text>
             <Text style={styles.summaryItem}>
-              <Text style={styles.bold}>Situación:</Text>{' '}
-              {situationType === 'Otro tipo de situación' ? customSituation : situationType}
+              <Text style={styles.bold}>Afectado:</Text>{' '}
+              {affectedPersonType === 'me' ? 'El propio estudiante' : 'Otra persona'}
             </Text>
             <Text style={styles.summaryItem}>
-              <Text style={styles.bold}>Lugar:</Text>{' '}
-              {location === 'Otro lugar' ? customLocation : location}
+              <Text style={styles.bold}>Situación(es):</Text> {getFormattedSituations()}
+            </Text>
+            <Text style={styles.summaryItem}>
+              <Text style={styles.bold}>Lugar(es):</Text> {getFormattedLocations()}
             </Text>
             <Text style={styles.summaryItem}>
               <Text style={styles.bold}>Frecuencia:</Text> {frequency}
             </Text>
             <Text style={styles.summaryItem}>
-              <Text style={styles.bold}>Involucrados:</Text> {involvedPersons}
+              <Text style={styles.bold}>Involucrados:</Text> {getFormattedInvolvedPersons()}
             </Text>
             <Text style={styles.summaryItem}>
               <Text style={styles.bold}>Adjuntos:</Text> {attachments.length} archivo(s) ({totalSizeMB} MB)
@@ -515,6 +830,7 @@ export default function NewReportScreen() {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
+    paddingTop: 36,
     backgroundColor: '#F8FAFC',
     flexGrow: 1,
   },
@@ -564,7 +880,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#0F172A',
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+  multiSelectHelp: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 10,
+    fontStyle: 'italic',
   },
   radioItem: {
     flexDirection: 'row',
@@ -594,7 +916,45 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     flex: 1,
   },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  checkboxRowSelected: {
+    backgroundColor: '#EFF6FF',
+  },
+  checkboxSquare: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#94A3B8',
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxSquareSelected: {
+    borderColor: '#1E3A8A',
+    backgroundColor: '#1E3A8A',
+  },
+  checkmarkIcon: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  checkboxText: {
+    fontSize: 14,
+    color: '#1E293B',
+    flex: 1,
+  },
   customInput: {
+    marginTop: 8,
+  },
+  inputSpacing: {
     marginTop: 8,
   },
   helperText: {
@@ -602,8 +962,60 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 6,
   },
-  navButton: {
-    marginTop: 8,
+  helperTextNotice: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 12,
+  },
+  dynamicListContainer: {
+    marginTop: 10,
+    gap: 12,
+  },
+  dynamicItemCard: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 12,
+  },
+  dynamicItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  dynamicItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E3A8A',
+  },
+  removeText: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+  addDynamicButton: {
+    marginTop: 6,
+  },
+  witnessRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 8,
+    gap: 8,
+  },
+  witnessInputWrapper: {
+    flex: 1,
+  },
+  removeWitnessBtn: {
+    padding: 12,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    marginBottom: 2,
+  },
+  removeWitnessText: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '800',
   },
   rowButtons: {
     flexDirection: 'row',
