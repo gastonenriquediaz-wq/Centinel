@@ -6,24 +6,36 @@ import { Button } from '../../src/components/ui/Button';
 import { useAuthStore } from '../../src/store/auth.store';
 import { AuthService } from '../../src/services/auth.service';
 import { StudentsService } from '../../src/services/students.service';
+import { ReportsService } from '../../src/services/reports.service';
 
 export default function AuthorityDashboard() {
   const { profile, institution, reset } = useAuthStore();
-  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
+  const [sentReportsCount, setSentReportsCount] = useState<number>(0);
 
-  const loadPendingCount = async () => {
+  const loadDashboardMetrics = async () => {
     if (!profile?.institution_id) return;
     try {
+      // 1. Solicitudes pendientes de registro
       const requests = await StudentsService.getPendingRequests(profile.institution_id);
-      setPendingCount(requests.length);
+      setPendingRequestsCount(requests.length);
+
+      // 2. Reportes con estado 'sent' (pendientes de revisión)
+      const { data: sentReports } = await ReportsService.getInstitutionReports(
+        profile.institution_id,
+        'sent'
+      );
+      if (sentReports) {
+        setSentReportsCount(sentReports.length);
+      }
     } catch {
-      // Ignorar fallo visual
+      // Fallo silencioso en dashboard
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      loadPendingCount();
+      loadDashboardMetrics();
     }, [profile?.institution_id])
   );
 
@@ -55,6 +67,28 @@ export default function AuthorityDashboard() {
 
       <Text style={styles.sectionHeader}>Gestión Institucional</Text>
 
+      {/* Acceso a Recepción de Reportes */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => router.push('/(authority)/reports')}
+      >
+        <Card style={styles.menuCard}>
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuTitle}>Recepción de Reportes</Text>
+            <Text style={styles.menuDesc}>
+              Bandeja de comunicaciones y evidencias enviadas por los alumnos.
+            </Text>
+          </View>
+          {sentReportsCount > 0 ? (
+            <View style={styles.alertBadge}>
+              <Text style={styles.alertBadgeText}>{sentReportsCount} nuevo(s)</Text>
+            </View>
+          ) : (
+            <Text style={styles.chevron}>›</Text>
+          )}
+        </Card>
+      </TouchableOpacity>
+
       {/* Acceso a Solicitudes de Registro */}
       <TouchableOpacity
         activeOpacity={0.7}
@@ -67,9 +101,9 @@ export default function AuthorityDashboard() {
               Aprobación y rechazo de cuentas estudiantiles registradas con código QR.
             </Text>
           </View>
-          {pendingCount > 0 ? (
+          {pendingRequestsCount > 0 ? (
             <View style={styles.countBadge}>
-              <Text style={styles.countText}>{pendingCount}</Text>
+              <Text style={styles.countText}>{pendingRequestsCount}</Text>
             </View>
           ) : (
             <Text style={styles.chevron}>›</Text>
@@ -105,14 +139,14 @@ export default function AuthorityDashboard() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: 20,
     backgroundColor: '#F8FAFC',
     flexGrow: 1,
   },
   welcomeCard: {
-    padding: 18,
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
+    padding: 20,
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
     marginBottom: 20,
   },
   badgeRow: {
@@ -121,7 +155,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   roleBadge: {
-    backgroundColor: '#166534',
+    backgroundColor: '#1E3A8A',
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
@@ -131,8 +165,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   positionBadge: {
-    backgroundColor: '#DCFCE7',
-    color: '#166534',
+    backgroundColor: '#DBEAFE',
+    color: '#1E3A8A',
     fontSize: 11,
     fontWeight: '700',
     paddingHorizontal: 8,
@@ -140,20 +174,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   userName: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#0F172A',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   institutionName: {
-    fontSize: 13,
-    color: '#166534',
+    fontSize: 14,
+    color: '#1E3A8A',
     fontWeight: '600',
   },
   sectionHeader: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#334155',
+    color: '#64748B',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -167,7 +201,7 @@ const styles = StyleSheet.create({
   },
   menuInfo: {
     flex: 1,
-    marginRight: 12,
+    paddingRight: 12,
   },
   menuTitle: {
     fontSize: 16,
@@ -176,22 +210,34 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   menuDesc: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#64748B',
-    lineHeight: 16,
+    lineHeight: 18,
   },
   countBadge: {
-    backgroundColor: '#DC2626',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 12,
     minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
   },
   countText: {
     color: '#FFFFFF',
     fontSize: 12,
+    fontWeight: '800',
+  },
+  alertBadge: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  alertBadgeText: {
+    color: '#1D4ED8',
+    fontSize: 11,
     fontWeight: '700',
   },
   chevron: {
@@ -200,7 +246,7 @@ const styles = StyleSheet.create({
     fontWeight: '300',
   },
   logoutButton: {
-    marginTop: 'auto',
-    paddingVertical: 12,
+    marginTop: 20,
+    marginBottom: 20,
   },
 });

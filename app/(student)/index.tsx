@@ -31,13 +31,34 @@ export default function StudentDashboard() {
         <Text style={styles.dniText}>DNI: {profile?.dni || 'No registrado'}</Text>
       </Card>
 
+      {/* Accesos rápidos de Reportes */}
+      <Card style={styles.actionCard}>
+        <Text style={styles.sectionTitle}>Comunicación y Reportes</Text>
+        <Text style={styles.actionDesc}>
+          Si estás atravesando o presencias una situación de hostigamiento o conflicto, puedes comunicarla de forma confidencial.
+        </Text>
+        <View style={styles.actionButtons}>
+          <Button
+            title="➕ Crear Nuevo Reporte"
+            onPress={() => router.push('/(student)/reports/new')}
+            style={styles.primaryActionButton}
+          />
+          <Button
+            title="📋 Mis Reportes Enviados"
+            variant="outline"
+            onPress={() => router.push('/(student)/reports')}
+            style={styles.secondaryActionButton}
+          />
+        </View>
+      </Card>
+
       <Card style={styles.infoCard}>
         <Text style={styles.sectionTitle}>Espacio de Comunicación Segura</Text>
         <Text style={styles.infoText}>
-          Desde aquí podrás comunicar situaciones de preocupación escolar directamente a las autoridades de tu institución.
+          Tus reportes son confidenciales y solo pueden ser leídos por los directivos y autoridades habilitadas de tu institución.
         </Text>
         <Text style={styles.noteText}>
-          Tus reportes y mensajes son privados y solo accesibles por las autoridades autorizadas de tu colegio.
+          ⚠️ En situaciones de riesgo físico inmediato o urgencias graves, comunícate de inmediato con las líneas 911 o 102.
         </Text>
       </Card>
 
@@ -91,6 +112,27 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
   },
+  actionCard: {
+    padding: 20,
+    marginBottom: 16,
+    borderColor: '#E2E8F0',
+  },
+  actionDesc: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 4,
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  actionButtons: {
+    gap: 10,
+  },
+  primaryActionButton: {
+    width: '100%',
+  },
+  secondaryActionButton: {
+    width: '100%',
+  },
   infoCard: {
     padding: 20,
     marginBottom: 24,
@@ -99,19 +141,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#0F172A',
-    marginBottom: 8,
   },
   infoText: {
     fontSize: 14,
     color: '#475569',
+    marginTop: 8,
     lineHeight: 20,
-    marginBottom: 8,
   },
   noteText: {
     fontSize: 12,
-    color: '#64748B',
-    fontStyle: 'italic',
-    lineHeight: 18,
+    color: '#B91C1C',
+    marginTop: 12,
+    lineHeight: 16,
+    fontWeight: '500',
   },
   logoutButton: {
     marginTop: 'auto',
