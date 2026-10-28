@@ -87,7 +87,7 @@ export const ReportsService = {
           const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
           const filePath = `${data.institution_id}/${reportId}/${fileName}`;
 
-          // Leer archivo en base64 usando la nueva API File de Expo SDK 58
+          // 1. Leer archivo en base64 usando la nueva API File de Expo SDK 58
           const fileObj = new File(attachment.uri);
           const base64Content = await fileObj.base64();
 
@@ -98,22 +98,26 @@ export const ReportsService = {
             .from('report-attachments')
             .upload(filePath, fileData, {
               contentType: mimeType,
-              upsert: false,
+              upsert: true,
             });
 
           if (uploadError) {
-            console.error('Error subiendo archivo:', uploadError);
+            console.error('Error subiendo archivo a Supabase Storage:', uploadError);
             continue;
           }
 
-          // Guardar registro en report_attachments
-          await supabase.from('report_attachments').insert({
+          // 2. Guardar registro en la tabla report_attachments
+          const { error: dbAttError } = await supabase.from('report_attachments').insert({
             report_id: reportId,
             storage_path: filePath,
             file_type: attachment.type,
             file_size_bytes: attachment.size,
             original_name: attachment.name,
           });
+
+          if (dbAttError) {
+            console.error('Error guardando registro en report_attachments:', dbAttError);
+          }
         } catch (uploadErr) {
           console.error('Excepción al procesar adjunto:', uploadErr);
         }
