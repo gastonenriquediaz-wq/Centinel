@@ -52,6 +52,20 @@ export default function StudentDashboard() {
         </View>
       </Card>
 
+      {/* Acceso al Módulo Educativo */}
+      <Card style={styles.actionCard}>
+        <Text style={styles.sectionTitle}>Módulo Educativo y Preventivo</Text>
+        <Text style={styles.actionDesc}>
+          Información clara y orientativa sobre acoso escolar, ciberacoso, convivencia y cuándo solicitar acompañamiento.
+        </Text>
+        <Button
+          title="📖 Aprender y Prevenir"
+          variant="outline"
+          onPress={() => router.push('/(student)/education')}
+          style={styles.educationButton}
+        />
+      </Card>
+
       <Card style={styles.infoCard}>
         <Text style={styles.sectionTitle}>Espacio de Comunicación Segura</Text>
         <Text style={styles.infoText}>
@@ -132,6 +146,10 @@ const styles = StyleSheet.create({
   },
   secondaryActionButton: {
     width: '100%',
+  },
+  educationButton: {
+    width: '100%',
+    borderColor: '#1E3A8A',
   },
   infoCard: {
     padding: 20,
