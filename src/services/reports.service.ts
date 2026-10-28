@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { Report, ReportAttachment, ReportStatus } from '../types/database.types';
-import * as FileSystem from 'expo-file-system/legacy';
+import { File } from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 
 export interface CreateReportInput {
@@ -87,10 +87,9 @@ export const ReportsService = {
           const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
           const filePath = `${data.institution_id}/${reportId}/${fileName}`;
 
-          // Leer archivo en base64 usando expo-file-system
-          const base64Content = await FileSystem.readAsStringAsync(attachment.uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
+          // Leer archivo en base64 usando la nueva API File de Expo SDK 58
+          const fileObj = new File(attachment.uri);
+          const base64Content = await fileObj.base64();
 
           const fileData = decode(base64Content);
           const mimeType = attachment.type === 'video' ? `video/${extension}` : `image/${extension}`;
