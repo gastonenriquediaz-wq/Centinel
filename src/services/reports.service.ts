@@ -87,16 +87,14 @@ export const ReportsService = {
           const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
           const filePath = `${data.institution_id}/${reportId}/${fileName}`;
 
-          // 1. Leer archivo en base64 usando la nueva API File de Expo SDK 58
-          const fileObj = new File(attachment.uri);
-          const base64Content = await fileObj.base64();
-
-          const fileData = decode(base64Content);
+          // Usar fetch + blob (método más confiable y compatible en React Native / Expo)
+          const response = await fetch(attachment.uri);
+          const blob = await response.blob();
           const mimeType = attachment.type === 'video' ? `video/${extension}` : `image/${extension}`;
 
           const { error: uploadError } = await supabase.storage
             .from('report-attachments')
-            .upload(filePath, fileData, {
+            .upload(filePath, blob, {
               contentType: mimeType,
               upsert: true,
             });
@@ -147,6 +145,7 @@ export const ReportsService = {
    */
   async getStudentReports(studentId: string): Promise<{ data: Report[]; error: string | null }> {
     try {
+      // 1. Obtener reportes
       const { data, error } = await supabase
         .from('reports')
         .select(`
@@ -160,7 +159,23 @@ export const ReportsService = {
         return { data: [], error: error.message };
       }
 
-      return { data: (data as Report[]) || [], error: null };
+      const reportsList = (data as Report[]) || [];
+
+      // Generar signed URLs para las miniaturas en la lista
+      for (const rep of reportsList) {
+        if (rep.attachments && rep.attachments.length > 0) {
+          for (const att of rep.attachments) {
+            const { data: urlData } = await supabase.storage
+              .from('report-attachments')
+              .createSignedUrl(att.storage_path, 3600);
+            if (urlData) {
+              att.public_url = urlData.signedUrl;
+            }
+          }
+        }
+      }
+
+      return { data: reportsList, error: null };
     } catch (err: any) {
       return { data: [], error: err.message };
     }
@@ -195,7 +210,23 @@ export const ReportsService = {
         return { data: [], error: error.message };
       }
 
-      return { data: (data as Report[]) || [], error: null };
+      const reportsList = (data as Report[]) || [];
+
+      // Generar signed URLs para las autoridades
+      for (const rep of reportsList) {
+        if (rep.attachments && rep.attachments.length > 0) {
+          for (const att of rep.attachments) {
+            const { data: urlData } = await supabase.storage
+              .from('report-attachments')
+              .createSignedUrl(att.storage_path, 3600);
+            if (urlData) {
+              att.public_url = urlData.signedUrl;
+            }
+          }
+        }
+      }
+
+      return { data: reportsList, error: null };
     } catch (err: any) {
       return { data: [], error: err.message };
     }

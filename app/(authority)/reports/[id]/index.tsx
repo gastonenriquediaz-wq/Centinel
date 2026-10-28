@@ -29,6 +29,7 @@ export default function AuthorityReportDetailScreen() {
   // Modal para cerrar sin apertura de caso
   const [closeModalVisible, setCloseModalVisible] = useState(false);
   const [closeReason, setCloseReason] = useState('');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -286,12 +287,23 @@ export default function AuthorityReportDetailScreen() {
           <View style={styles.attachmentsGrid}>
             {report.attachments.map((att) => (
               <View key={att.id} style={styles.attachmentItem}>
-                {att.file_type === 'image' && att.public_url ? (
+                {att.file_type === 'image' ? (
                   <TouchableOpacity
-                    onPress={() => Linking.openURL(att.public_url!)}
+                    onPress={() => att.public_url && setPreviewImage(att.public_url)}
                     activeOpacity={0.8}
                   >
-                    <Image source={{ uri: att.public_url }} style={styles.imageThumbnail} />
+                    {att.public_url ? (
+                      <Image
+                        source={{ uri: att.public_url }}
+                        style={styles.imageThumbnail}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={[styles.imageThumbnail, styles.placeholderThumb]}>
+                        <Text style={styles.placeholderIcon}>🖼️</Text>
+                        <Text style={styles.placeholderText}>Cargando imagen...</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
@@ -313,6 +325,25 @@ export default function AuthorityReportDetailScreen() {
           </View>
         </Card>
       )}
+
+      {/* Visor Modal de Imagen en Pantalla Completa */}
+      <Modal visible={!!previewImage} transparent animationType="fade">
+        <View style={styles.fullscreenOverlay}>
+          <TouchableOpacity
+            style={styles.closeFullscreenBtn}
+            onPress={() => setPreviewImage(null)}
+          >
+            <Text style={styles.closeFullscreenText}>✕ Cerrar</Text>
+          </TouchableOpacity>
+          {previewImage && (
+            <Image
+              source={{ uri: previewImage }}
+              style={styles.fullscreenImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
 
       {/* Modal para Cerrar sin apertura de caso con Justificación */}
       <Modal visible={closeModalVisible} transparent animationType="slide">
@@ -564,5 +595,41 @@ const styles = StyleSheet.create({
   },
   modalBtn: {
     flex: 1,
+  },
+  placeholderThumb: {
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderIcon: {
+    fontSize: 24,
+  },
+  placeholderText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  fullscreenOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  closeFullscreenBtn: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    padding: 10,
+    zIndex: 10,
+  },
+  closeFullscreenText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  fullscreenImage: {
+    width: '100%',
+    height: '80%',
   },
 });

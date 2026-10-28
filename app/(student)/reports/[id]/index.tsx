@@ -8,6 +8,7 @@ import {
   Image,
   TouchableOpacity,
   Linking,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Card } from '../../../../src/components/ui/Card';
@@ -19,6 +20,8 @@ export default function StudentReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -157,12 +160,23 @@ export default function StudentReportDetailScreen() {
           <View style={styles.attachmentsGrid}>
             {report.attachments.map((att) => (
               <View key={att.id} style={styles.attachmentItem}>
-                {att.file_type === 'image' && att.public_url ? (
+                {att.file_type === 'image' ? (
                   <TouchableOpacity
-                    onPress={() => Linking.openURL(att.public_url!)}
+                    onPress={() => att.public_url && setPreviewImage(att.public_url)}
                     activeOpacity={0.8}
                   >
-                    <Image source={{ uri: att.public_url }} style={styles.imageThumbnail} />
+                    {att.public_url ? (
+                      <Image
+                        source={{ uri: att.public_url }}
+                        style={styles.imageThumbnail}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={[styles.imageThumbnail, styles.placeholderThumb]}>
+                        <Text style={styles.placeholderIcon}>🖼️</Text>
+                        <Text style={styles.placeholderText}>Cargando imagen...</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
@@ -184,6 +198,25 @@ export default function StudentReportDetailScreen() {
           </View>
         </Card>
       )}
+
+      {/* Visor Modal de Imagen en Pantalla Completa */}
+      <Modal visible={!!previewImage} transparent animationType="fade">
+        <View style={styles.fullscreenOverlay}>
+          <TouchableOpacity
+            style={styles.closeFullscreenBtn}
+            onPress={() => setPreviewImage(null)}
+          >
+            <Text style={styles.closeFullscreenText}>✕ Cerrar</Text>
+          </TouchableOpacity>
+          {previewImage && (
+            <Image
+              source={{ uri: previewImage }}
+              style={styles.fullscreenImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
 
       {/* Nota de inmutabilidad */}
       <Card style={styles.footerNoteCard}>
@@ -356,5 +389,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     lineHeight: 16,
+  },
+  placeholderThumb: {
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderIcon: {
+    fontSize: 24,
+  },
+  placeholderText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  fullscreenOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  closeFullscreenBtn: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    padding: 10,
+    zIndex: 10,
+  },
+  closeFullscreenText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  fullscreenImage: {
+    width: '100%',
+    height: '80%',
   },
 });
