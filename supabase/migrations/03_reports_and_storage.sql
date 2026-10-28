@@ -1,8 +1,8 @@
 -- ==============================================================================
--- CENTINEL - INCREMENTO 3: REPORTES, ARCHIVOS ADJUNTOS Y AUDITORÍA
+-- CENTINEL - INCREMENTO 3: REPORTES, ARCHIVOS ADJUNTOS Y AUDITORÍA (CORREGIDO)
 -- ==============================================================================
 
--- 1. Enums para estados de reporte y tipos de archivo
+-- 1. Tipos Enum
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
@@ -27,12 +27,11 @@ CREATE TABLE IF NOT EXISTS public.reports (
     description TEXT NOT NULL,
     status public.report_status NOT NULL DEFAULT 'sent',
     close_reason TEXT,
-    case_id UUID, -- Se relacionará formalmente con la tabla cases en el Incremento 5
+    case_id UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Índices para optimizar búsquedas y listados
 CREATE INDEX IF NOT EXISTS idx_reports_institution_id ON public.reports(institution_id);
 CREATE INDEX IF NOT EXISTS idx_reports_student_id ON public.reports(student_id);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON public.reports(status);
@@ -55,9 +54,9 @@ CREATE INDEX IF NOT EXISTS idx_report_attachments_report_id ON public.report_att
 CREATE TABLE IF NOT EXISTS public.audit_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID NOT NULL REFERENCES public.institutions(id) ON DELETE CASCADE,
-    entity_type TEXT NOT NULL, -- e.g., 'report', 'case'
+    entity_type TEXT NOT NULL,
     entity_id UUID NOT NULL,
-    action TEXT NOT NULL,      -- e.g., 'created', 'status_changed', 'first_opened'
+    action TEXT NOT NULL,
     performed_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     details JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -66,36 +65,18 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
 CREATE INDEX IF NOT EXISTS idx_audit_log_institution_id ON public.audit_log(institution_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON public.audit_log(entity_type, entity_id);
 
--- 5. Configuración de Storage Bucket (report-attachments)
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-    'report-attachments',
-    'report-attachments',
-    false,
-    41943040, -- 40MB max por archivo individual (video)
-    ARRAY['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime']
-)
-ON CONFLICT (id) DO UPDATE SET
-    public = false,
-    file_size_limit = 41943040,
-    allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime'];
-
--- 6. Habilitar RLS en las nuevas tablas
+-- 5. Habilitar RLS
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.report_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
--- 7. Políticas RLS para Reportes
--- Estudiantes: Sólo pueden ver sus propios reportes
+-- 6. Políticas RLS para Reportes (usando account_status = 'approved' en profiles)
 DROP POLICY IF EXISTS "Students can view own reports" ON public.reports;
 CREATE POLICY "Students can view own reports"
 ON public.reports FOR SELECT
 TO authenticated
-USING (
-    student_id = auth.uid()
-);
+USING (student_id = auth.uid());
 
--- Estudiantes: Pueden crear reportes con su propio ID y su institución
 DROP POLICY IF EXISTS "Students can insert own reports" ON public.reports;
 CREATE POLICY "Students can insert own reports"
 ON public.reports FOR INSERT
@@ -107,7 +88,6 @@ WITH CHECK (
     )
 );
 
--- Autoridades: Pueden ver todos los reportes de su institución
 DROP POLICY IF EXISTS "Authorities can view institution reports" ON public.reports;
 CREATE POLICY "Authorities can view institution reports"
 ON public.reports FOR SELECT
@@ -115,11 +95,10 @@ TO authenticated
 USING (
     institution_id IN (
         SELECT institution_id FROM public.profiles 
-        WHERE id = auth.uid() AND role = 'authority' AND status = 'active'
+        WHERE id = auth.uid() AND role = 'authority' AND account_status = 'approved'
     )
 );
 
--- Autoridades: Pueden actualizar el estado y razón de cierre de reportes de su institución
 DROP POLICY IF EXISTS "Authorities can update report status" ON public.reports;
 CREATE POLICY "Authorities can update report status"
 ON public.reports FOR UPDATE
@@ -127,17 +106,17 @@ TO authenticated
 USING (
     institution_id IN (
         SELECT institution_id FROM public.profiles 
-        WHERE id = auth.uid() AND role = 'authority' AND status = 'active'
+        WHERE id = auth.uid() AND role = 'authority' AND account_status = 'approved'
     )
 )
 WITH CHECK (
     institution_id IN (
         SELECT institution_id FROM public.profiles 
-        WHERE id = auth.uid() AND role = 'authority' AND status = 'active'
+        WHERE id = auth.uid() AND role = 'authority' AND account_status = 'approved'
     )
 );
 
--- 8. Políticas RLS para Adjuntos (report_attachments)
+-- 7. Políticas RLS para Adjuntos
 DROP POLICY IF EXISTS "Students can view attachments of own reports" ON public.report_attachments;
 CREATE POLICY "Students can view attachments of own reports"
 ON public.report_attachments FOR SELECT
@@ -171,11 +150,11 @@ USING (
         WHERE r.id = report_attachments.report_id 
           AND p.id = auth.uid() 
           AND p.role = 'authority' 
-          AND p.status = 'active'
+          AND p.account_status = 'approved'
     )
 );
 
--- 9. Políticas RLS para Auditoría (audit_log)
+-- 8. Políticas RLS para Auditoría
 DROP POLICY IF EXISTS "Authorities can view institution audit log" ON public.audit_log;
 CREATE POLICY "Authorities can view institution audit log"
 ON public.audit_log FOR SELECT
@@ -183,7 +162,7 @@ TO authenticated
 USING (
     institution_id IN (
         SELECT institution_id FROM public.profiles 
-        WHERE id = auth.uid() AND role = 'authority' AND status = 'active'
+        WHERE id = auth.uid() AND role = 'authority' AND account_status = 'approved'
     )
 );
 
@@ -191,28 +170,9 @@ DROP POLICY IF EXISTS "Authenticated users can insert audit log" ON public.audit
 CREATE POLICY "Authenticated users can insert audit log"
 ON public.audit_log FOR INSERT
 TO authenticated
-WITH CHECK (
-    performed_by = auth.uid()
-);
+WITH CHECK (performed_by = auth.uid());
 
--- 10. Políticas de Storage en storage.objects
-DROP POLICY IF EXISTS "Allow authenticated upload to report-attachments" ON storage.objects;
-CREATE POLICY "Allow authenticated upload to report-attachments"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (
-    bucket_id = 'report-attachments'
-);
-
-DROP POLICY IF EXISTS "Allow read access to report-attachments" ON storage.objects;
-CREATE POLICY "Allow read access to report-attachments"
-ON storage.objects FOR SELECT
-TO authenticated
-USING (
-    bucket_id = 'report-attachments'
-);
-
--- 11. Función RPC para registrar primera lectura por autoridad
+-- 9. Función RPC para primera lectura
 CREATE OR REPLACE FUNCTION public.log_report_first_opened(p_report_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -231,7 +191,6 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    -- Verificar si ya fue registrado el evento first_opened por alguna autoridad
     SELECT EXISTS (
         SELECT 1 FROM public.audit_log
         WHERE entity_type = 'report' AND entity_id = p_report_id AND action = 'first_opened'
@@ -259,3 +218,6 @@ BEGIN
     RETURN FALSE;
 END;
 $$;
+
+-- Notificar recarga de schema cache a PostgREST
+NOTIFY pgrst, 'reload schema';

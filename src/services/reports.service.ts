@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { Report, ReportAttachment, ReportStatus } from '../types/database.types';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 
 export interface CreateReportInput {
