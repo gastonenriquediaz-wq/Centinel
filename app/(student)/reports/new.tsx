@@ -55,8 +55,6 @@ export default function NewReportScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- PASO 1 STATE ---
-  // ¿Quién es la persona afectada?
-  const [affectedPersonType, setAffectedPersonType] = useState<'me' | 'other' | ''>('');
   // ¿Qué tipo de situación deseas comunicar? (Multi-select)
   const [selectedSituations, setSelectedSituations] = useState<string[]>([]);
   const [customSituation, setCustomSituation] = useState('');
@@ -208,10 +206,6 @@ export default function NewReportScreen() {
   // Validación y navegación
   const handleNext = () => {
     if (currentStep === 1) {
-      if (!affectedPersonType) {
-        Alert.alert('Campo requerido', 'Por favor indica quién es la persona afectada.');
-        return;
-      }
       if (selectedSituations.length === 0) {
         Alert.alert('Campo requerido', 'Por favor selecciona al menos un tipo de situación.');
         return;
@@ -231,15 +225,6 @@ export default function NewReportScreen() {
       if (!frequency) {
         Alert.alert('Campo requerido', 'Por favor selecciona con qué frecuencia ocurre la situación.');
         return;
-      }
-
-      // Pre-poblar Paso 2 (1_ Quién sufrió la situación) según lo marcado en Paso 1 si aún no se eligió
-      if (!affectedPersonOption) {
-        if (affectedPersonType === 'me') {
-          setAffectedPersonOption('me_affected');
-        } else {
-          setAffectedPersonOption('other_affected');
-        }
       }
 
       setCurrentStep(2);
@@ -411,26 +396,6 @@ export default function NewReportScreen() {
       {/* ===================== PASO 1 ===================== */}
       {currentStep === 1 && (
         <View style={styles.stepContainer}>
-          {/* Nueva pregunta: ¿Quién es la persona afectada? */}
-          <Card style={styles.card}>
-            <Text style={styles.label}>¿Quién es la persona afectada?</Text>
-            <TouchableOpacity
-              style={[styles.radioItem, affectedPersonType === 'me' && styles.radioItemSelected]}
-              onPress={() => setAffectedPersonType('me')}
-            >
-              <View style={[styles.radioDot, affectedPersonType === 'me' && styles.radioDotSelected]} />
-              <Text style={styles.radioText}>Me ocurre a mí</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.radioItem, affectedPersonType === 'other' && styles.radioItemSelected]}
-              onPress={() => setAffectedPersonType('other')}
-            >
-              <View style={[styles.radioDot, affectedPersonType === 'other' && styles.radioDotSelected]} />
-              <Text style={styles.radioText}>Le ocurre a otra persona</Text>
-            </TouchableOpacity>
-          </Card>
-
           {/* ¿Qué tipo de situación deseas comunicar? (Multi-select) */}
           <Card style={styles.card}>
             <Text style={styles.label}>¿Qué tipo de situación deseas comunicar?</Text>
@@ -757,7 +722,9 @@ export default function NewReportScreen() {
             <Text style={styles.summaryHeader}>Resumen de la Comunicación</Text>
             <Text style={styles.summaryItem}>
               <Text style={styles.bold}>Afectado:</Text>{' '}
-              {affectedPersonType === 'me' ? 'El propio estudiante' : 'Otra persona'}
+              {affectedPersonOption === 'me_affected'
+                ? 'El propio estudiante que reporta'
+                : `Otra persona (${affectedPersonOtherName.trim()})`}
             </Text>
             <Text style={styles.summaryItem}>
               <Text style={styles.bold}>Situación(es):</Text> {getFormattedSituations()}
