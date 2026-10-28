@@ -213,6 +213,21 @@ export default function AuthorityReportDetailScreen() {
             <Text style={styles.inProgressText}>
               Este reporte está en etapa de seguimiento e investigación por las autoridades.
             </Text>
+
+            {report.case_id ? (
+              <Button
+                title="📂 Ver Caso de Intervención Vinculado"
+                onPress={() => router.push(`/(authority)/cases/${report.case_id}` as any)}
+                style={styles.openCaseBtn}
+              />
+            ) : (
+              <Button
+                title="📂 Abrir Caso Formal de Protocolo"
+                onPress={() => router.push(`/(authority)/cases/new?reportId=${report.id}` as any)}
+                style={styles.openCaseBtn}
+              />
+            )}
+
             <Button
               title="Cerrar sin apertura de caso"
               variant="outline"
@@ -466,6 +481,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   closeNoCaseBtn: {
+    marginTop: 4,
+  },
+  openCaseBtn: {
+    backgroundColor: '#0F766E',
     marginTop: 4,
   },
   closedInfoBox: {

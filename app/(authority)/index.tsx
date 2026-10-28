@@ -7,11 +7,13 @@ import { useAuthStore } from '../../src/store/auth.store';
 import { AuthService } from '../../src/services/auth.service';
 import { StudentsService } from '../../src/services/students.service';
 import { ReportsService } from '../../src/services/reports.service';
+import { CasesService } from '../../src/services/cases.service';
 
 export default function AuthorityDashboard() {
   const { profile, institution, reset } = useAuthStore();
   const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
   const [sentReportsCount, setSentReportsCount] = useState<number>(0);
+  const [activeCasesCount, setActiveCasesCount] = useState<number>(0);
 
   const loadDashboardMetrics = async () => {
     if (!profile?.institution_id) return;
@@ -27,6 +29,13 @@ export default function AuthorityDashboard() {
       );
       if (sentReports) {
         setSentReportsCount(sentReports.length);
+      }
+
+      // 3. Casos activos ('open' o 'under_investigation')
+      const { data: cases } = await CasesService.getInstitutionCases(profile.institution_id);
+      if (cases) {
+        const active = cases.filter((c) => c.status !== 'resolved');
+        setActiveCasesCount(active.length);
       }
     } catch {
       // Fallo silencioso en dashboard
@@ -82,6 +91,28 @@ export default function AuthorityDashboard() {
           {sentReportsCount > 0 ? (
             <View style={styles.alertBadge}>
               <Text style={styles.alertBadgeText}>{sentReportsCount} nuevo(s)</Text>
+            </View>
+          ) : (
+            <Text style={styles.chevron}>›</Text>
+          )}
+        </Card>
+      </TouchableOpacity>
+
+      {/* Acceso a Casos y Protocolos de Actuación */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => router.push('/(authority)/cases')}
+      >
+        <Card style={styles.menuCard}>
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuTitle}>Casos y Protocolos</Text>
+            <Text style={styles.menuDesc}>
+              Expedientes formales, actas de entrevistas, acuerdos y resoluciones.
+            </Text>
+          </View>
+          {activeCasesCount > 0 ? (
+            <View style={styles.caseCountBadge}>
+              <Text style={styles.caseCountText}>{activeCasesCount} activo(s)</Text>
             </View>
           ) : (
             <Text style={styles.chevron}>›</Text>
@@ -237,6 +268,19 @@ const styles = StyleSheet.create({
   },
   alertBadgeText: {
     color: '#1D4ED8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  caseCountBadge: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  caseCountText: {
+    color: '#B45309',
     fontSize: 11,
     fontWeight: '700',
   },
