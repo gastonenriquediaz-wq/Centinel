@@ -8,7 +8,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, Stack } from 'expo-router';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { useAuthStore } from '../../../src/store/auth.store';
@@ -74,6 +74,7 @@ export default function PendingRequestsScreen() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ title: 'Solicitudes de Registro', headerBackTitle: 'Inicio' }} />
       <Text style={styles.title}>Solicitudes de Registro</Text>
       <Text style={styles.subtitle}>
         Estudiantes que completaron el registro mediante código QR y aguardan habilitación institucional.

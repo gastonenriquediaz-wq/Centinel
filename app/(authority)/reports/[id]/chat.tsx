@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useAuthStore } from '../../../../src/store/auth.store';
@@ -85,6 +86,12 @@ export default function AuthorityReportChatScreen() {
         'authority',
         textToSend
       );
+
+      if (error) {
+        Alert.alert('No se pudo enviar el mensaje', error);
+        setInputText(textToSend);
+        return;
+      }
 
       if (data) {
         setMessages((prev) => {

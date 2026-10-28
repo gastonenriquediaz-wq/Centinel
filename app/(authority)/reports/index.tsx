@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { useAuthStore } from '../../../src/store/auth.store';
@@ -89,6 +89,7 @@ export default function AuthorityReportsList() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ title: 'Recepción de Reportes', headerBackTitle: 'Inicio' }} />
       <View style={styles.header}>
         <Button
           title="← Volver"

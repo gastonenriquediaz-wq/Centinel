@@ -8,7 +8,7 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, Stack } from 'expo-router';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { useAuthStore } from '../../../src/store/auth.store';
@@ -49,6 +49,7 @@ export default function CoursesListScreen() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ title: 'Cursos y Códigos QR', headerBackTitle: 'Inicio' }} />
       <View style={styles.headerRow}>
         <Text style={styles.title}>Cursos Institucionales</Text>
         <Button

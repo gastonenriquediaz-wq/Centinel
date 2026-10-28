@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { Card } from '../../../src/components/ui/Card';
 import { Input } from '../../../src/components/ui/Input';
 import { Button } from '../../../src/components/ui/Button';
@@ -82,6 +82,7 @@ export default function NewCourseScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Stack.Screen options={{ title: 'Nuevo Curso', headerBackTitle: 'Cursos' }} />
         <Card style={styles.card}>
           <Text style={styles.formTitle}>Registrar Nuevo Curso</Text>
 

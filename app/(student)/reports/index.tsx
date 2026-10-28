@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { useAuthStore } from '../../../src/store/auth.store';
@@ -67,6 +67,7 @@ export default function StudentReportsList() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ title: 'Mis Reportes', headerBackTitle: 'Inicio' }} />
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Mis Reportes</Text>

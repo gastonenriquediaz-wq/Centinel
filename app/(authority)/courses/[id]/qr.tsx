@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { NativeQRCode } from '../../../../src/components/ui/NativeQRCode';
 import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
@@ -89,6 +89,7 @@ export default function CourseQRScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Stack.Screen options={{ title: 'Código QR de Curso', headerBackTitle: 'Cursos' }} />
       <Card style={styles.card}>
         <Text style={styles.courseHeader}>
           {course ? `${course.year}° "${course.division}"` : 'Cargando curso...'}

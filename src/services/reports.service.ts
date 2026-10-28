@@ -81,26 +81,38 @@ export const ReportsService = {
       const reportId = reportData.id;
 
       // 3. Subir adjuntos si existen
+      const attachmentWarnings: string[] = [];
       for (const attachment of attachments) {
         try {
-          const extension = attachment.name.split('.').pop() || (attachment.type === 'video' ? 'mp4' : 'jpg');
+          const extension = (attachment.name.split('.').pop() || (attachment.type === 'video' ? 'mp4' : 'jpg')).toLowerCase();
           const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
           const filePath = `${data.institution_id}/${reportId}/${fileName}`;
 
-          // Usar fetch + blob (método más confiable y compatible en React Native / Expo)
-          const response = await fetch(attachment.uri);
-          const blob = await response.blob();
-          const mimeType = attachment.type === 'video' ? `video/${extension}` : `image/${extension}`;
+          // 1. Leer archivo de forma nativa con File.bytes() (Uint8Array) o fallback a fetch().arrayBuffer()
+          let fileBytes: Uint8Array | ArrayBuffer;
+          try {
+            const fileObj = new File(attachment.uri);
+            fileBytes = await fileObj.bytes();
+          } catch {
+            const response = await fetch(attachment.uri);
+            fileBytes = await response.arrayBuffer();
+          }
+
+          const mimeType =
+            attachment.type === 'video'
+              ? `video/${extension === 'mov' ? 'quicktime' : 'mp4'}`
+              : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
 
           const { error: uploadError } = await supabase.storage
             .from('report-attachments')
-            .upload(filePath, blob, {
+            .upload(filePath, fileBytes, {
               contentType: mimeType,
               upsert: true,
             });
 
           if (uploadError) {
             console.error('Error subiendo archivo a Supabase Storage:', uploadError);
+            attachmentWarnings.push(`Error subiendo ${attachment.name}: ${uploadError.message}`);
             continue;
           }
 
@@ -115,9 +127,11 @@ export const ReportsService = {
 
           if (dbAttError) {
             console.error('Error guardando registro en report_attachments:', dbAttError);
+            attachmentWarnings.push(`Error registrando ${attachment.name}: ${dbAttError.message}`);
           }
-        } catch (uploadErr) {
+        } catch (uploadErr: any) {
           console.error('Excepción al procesar adjunto:', uploadErr);
+          attachmentWarnings.push(`Excepción en ${attachment.name}: ${uploadErr.message}`);
         }
       }
 

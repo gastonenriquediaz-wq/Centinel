@@ -11,7 +11,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
 import { Input } from '../../../../src/components/ui/Input';
@@ -163,6 +163,7 @@ export default function AuthorityReportDetailScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Stack.Screen options={{ title: 'Inspección de Reporte', headerBackTitle: 'Reportes' }} />
       <Button
         title="← Volver al listado"
         variant="outline"

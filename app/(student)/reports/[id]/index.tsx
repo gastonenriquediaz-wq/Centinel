@@ -10,7 +10,7 @@ import {
   Linking,
   Modal,
 } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
 import { ReportsService } from '../../../../src/services/reports.service';
@@ -91,6 +91,7 @@ export default function StudentReportDetailScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Stack.Screen options={{ title: 'Detalle de Reporte', headerBackTitle: 'Reportes' }} />
       <Button
         title="← Volver a Mis Reportes"
         variant="outline"
