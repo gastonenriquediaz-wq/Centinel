@@ -182,6 +182,13 @@ export default function AuthorityReportDetailScreen() {
           </View>
         </View>
 
+        {/* Acceso al Chat de Comunicación con el Alumno */}
+        <Button
+          title="💬 Mensajes con el Estudiante"
+          onPress={() => router.push(`/(authority)/reports/${report.id}/chat` as any)}
+          style={styles.chatNavButton}
+        />
+
         {/* Botones de acción según estado */}
         {report.status === 'sent' && (
           <View style={styles.statusActionsRow}>
@@ -442,6 +449,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 4,
+  },
+  chatNavButton: {
+    marginBottom: 10,
+    backgroundColor: '#1E3A8A',
   },
   actionBtn: {
     flex: 1,

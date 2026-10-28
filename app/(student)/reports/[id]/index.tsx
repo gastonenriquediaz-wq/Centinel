@@ -108,6 +108,13 @@ export default function StudentReportDetailScreen() {
         </View>
         <Text style={styles.statusDescription}>{badge.desc}</Text>
 
+        {/* Acceso al Chat de Comunicación */}
+        <Button
+          title="💬 Mensajes con las Autoridades"
+          onPress={() => router.push(`/(student)/reports/${report.id}/chat` as any)}
+          style={styles.chatNavButton}
+        />
+
         {report.status === 'closed_no_case' && report.close_reason && (
           <View style={styles.closeReasonBox}>
             <Text style={styles.closeReasonTitle}>Motivo indicado por la autoridad:</Text>
@@ -288,6 +295,10 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: '#F1F5F9',
     borderRadius: 6,
+  },
+  chatNavButton: {
+    marginTop: 14,
+    backgroundColor: '#1E3A8A',
   },
   closeReasonTitle: {
     fontSize: 12,

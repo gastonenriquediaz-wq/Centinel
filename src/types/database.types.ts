@@ -109,6 +109,18 @@ export interface AuditLog {
   created_at: string;
 }
 
+export interface ReportMessage {
+  id: string;
+  report_id: string;
+  sender_id: string;
+  sender_role: UserRole;
+  content: string;
+  read_at: string | null;
+  created_at: string;
+  // Join opcional
+  sender?: Profile;
+}
+
 export interface UserSession {
   user: {
     id: string;
