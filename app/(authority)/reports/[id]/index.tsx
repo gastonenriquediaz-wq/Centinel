@@ -12,6 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
 import { Input } from '../../../../src/components/ui/Input';
@@ -21,6 +22,7 @@ import { Report, ReportStatus } from '../../../../src/types/database.types';
 
 export default function AuthorityReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
@@ -162,7 +164,12 @@ export default function AuthorityReportDetailScreen() {
   const badge = getStatusBadge(report.status);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: Math.max(insets.bottom, 24) + 40 },
+      ]}
+    >
       <Stack.Screen options={{ title: 'Inspección de Reporte', headerBackTitle: 'Reportes' }} />
       <Button
         title="← Volver al listado"
@@ -309,12 +316,21 @@ export default function AuthorityReportDetailScreen() {
           </Text>
           <View style={styles.attachmentsGrid}>
             {report.attachments.map((att) => (
-              <View key={att.id} style={styles.attachmentItem}>
+              <TouchableOpacity
+                key={att.id}
+                style={styles.attachmentItem}
+                activeOpacity={0.75}
+                onPress={() => {
+                  if (!att.public_url) return;
+                  if (att.file_type === 'image') {
+                    setPreviewImage(att.public_url);
+                  } else {
+                    Linking.openURL(att.public_url);
+                  }
+                }}
+              >
                 {att.file_type === 'image' ? (
-                  <TouchableOpacity
-                    onPress={() => att.public_url && setPreviewImage(att.public_url)}
-                    activeOpacity={0.8}
-                  >
+                  <View style={styles.thumbnailWrapper}>
                     {att.public_url ? (
                       <Image
                         source={{ uri: att.public_url }}
@@ -327,30 +343,32 @@ export default function AuthorityReportDetailScreen() {
                         <Text style={styles.placeholderText}>Cargando imagen...</Text>
                       </View>
                     )}
-                  </TouchableOpacity>
+                  </View>
                 ) : (
-                  <TouchableOpacity
-                    style={styles.videoThumbnail}
-                    onPress={() => att.public_url && Linking.openURL(att.public_url)}
-                  >
+                  <View style={styles.videoThumbnail}>
                     <Text style={styles.videoIcon}>🎥</Text>
                     <Text style={styles.videoText}>Abrir Video</Text>
-                  </TouchableOpacity>
+                  </View>
                 )}
                 <Text style={styles.fileName} numberOfLines={1}>
                   {att.original_name}
                 </Text>
                 <Text style={styles.fileSize}>
-                  {(att.file_size_bytes / (1024 * 1024)).toFixed(2)} MB
+                  {(att.file_size_bytes / (1024 * 1024)).toFixed(2)} MB · Tocar para ver
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </Card>
       )}
 
       {/* Visor Modal de Imagen en Pantalla Completa */}
-      <Modal visible={!!previewImage} transparent animationType="fade">
+      <Modal
+        visible={!!previewImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewImage(null)}
+      >
         <View style={styles.fullscreenOverlay}>
           <TouchableOpacity
             style={styles.closeFullscreenBtn}
@@ -566,6 +584,13 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     padding: 8,
     alignItems: 'center',
+  },
+  thumbnailWrapper: {
+    width: '100%',
+    height: 110,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: '#E2E8F0',
   },
   imageThumbnail: {
     width: '100%',
