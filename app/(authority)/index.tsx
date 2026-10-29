@@ -158,6 +158,22 @@ export default function AuthorityDashboard() {
         </Card>
       </TouchableOpacity>
 
+      {/* Acceso a Módulo Educativo y Preventivo */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => router.push('/(authority)/education')}
+      >
+        <Card style={styles.menuCard}>
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuTitle}>Módulo Educativo y Preventivo</Text>
+            <Text style={styles.menuDesc}>
+              Guías pedagógicas, criterios formativos sobre acoso escolar, ciberacoso y convivencia.
+            </Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Card>
+      </TouchableOpacity>
+
       <Button
         title="Cerrar Sesión"
         variant="outline"
