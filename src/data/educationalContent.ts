@@ -61,7 +61,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     icon: '📱',
     iconBg: '#EFF6FF',
     intro:
-      'El ciberacoso (o cyberbullying) ocurre cuando se utilizan tecnologías digitales —redes sociales, plataformas de mensajería, juegos en línea— para intimidar, avergonzar o agredir de forma sostenida a un estudiante.',
+      'El ciberacoso (o cyberbullying) ocurre cuando se utilizan tecnologías digitales —redes sociales, plataformas de mensajería, juegos en línea— para intimidar, avergonzar o agredir de forma sostenida a un estudiante.\n\nA diferencia de otras formas de acoso, en los entornos digitales una publicación ofensiva puede compartirse o difundirse numerosas veces, prolongando el daño causado. Por eso, incluso una situación aparentemente aislada puede requerir atención y acompañamiento.',
     sections: [
       {
         subtitle: 'Cómo suele manifestarse en entornos digitales',
@@ -69,7 +69,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
         examples: [
           'Envío reiterado de mensajes amenazantes, despectivos o intimidatorios por canales privados o públicos.',
           'Creación de grupos o encuestas con el fin de burlarse, calificar negativamente o excluir a un compañero.',
-          'Difusión no consentida de imágenes, audios o información personal privada para generar escarnio.',
+          'Difusión de fotografías, videos, audios o información personal sin consentimiento, con la intención de avergonzar, humillar o perjudicar a otra persona.',
           'Suplantación de identidad en perfiles falsos para difamar o provocar conflictos.',
         ],
       },
@@ -77,7 +77,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
         subtitle: 'Pautas para el cuidado digital y conservación de evidencias',
         body: 'Si te enfrentás a agresiones digitales, es importante adoptar recaudos de protección:',
         recommendations: [
-          'Conservar constancias: Guardá capturas de pantalla completas (donde se visualicen remitente, fecha y contexto de los mensajes) antes de bloquear o borrar chats.',
+          'Guardar evidencias de forma segura: Si es posible y no te pone en riesgo, conservá capturas de pantalla de los mensajes o publicaciones, incluyendo la fecha y el remitente. Pedí ayuda a un adulto de confianza para hacerlo. No compartas ni difundas el contenido entre compañeros.',
           'Configurar privacidad: Bloqueá o silenciá cuentas agresoras y ajustá la visibilidad de tus perfiles a personas conocidas.',
           'Evitar responder con agresiones: Reaccionar en caliente suele amplificar el conflicto.',
           'Comunicarlo a adultos: Pedí orientación a tu familia, docentes o directivos.',
@@ -85,7 +85,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
       },
     ],
     keyAdvice:
-      'Lo que ocurre en internet tiene un impacto real en las personas. Recordá que guardar las capturas de pantalla de manera segura servirá para que la institución pueda intervenir adecuadamente.',
+      'Lo que sucede en Internet puede afectar seriamente a las personas.\n\nSi vos o alguien que conocés está sufriendo ciberacoso, no respondas con agresiones ni difundas el contenido. Buscá ayuda de un adulto de confianza o de las autoridades de tu institución.\n\nRecordá que también podés utilizar Centinel para comunicar lo sucedido y solicitar acompañamiento.',
   },
   {
     id: 'que-puedo-hacer-si-me-pasa-a-mi',
