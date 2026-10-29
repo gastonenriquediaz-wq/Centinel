@@ -1,11 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { router, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../../src/components/ui/Card';
-import { Button } from '../../../src/components/ui/Button';
 import { EDUCATIONAL_TOPICS, EducationalTopic } from '../../../src/data/educationalContent';
 
 export default function EducationHomeScreen() {
+  const insets = useSafeAreaInsets();
+
   const renderItem = ({ item }: { item: EducationalTopic }) => (
     <TouchableOpacity
       activeOpacity={0.7}
@@ -14,14 +17,14 @@ export default function EducationHomeScreen() {
     >
       <Card style={styles.topicCard}>
         <View style={styles.cardContent}>
-          <View style={styles.iconContainer}>
+          <View style={[styles.iconContainer, { backgroundColor: item.iconBg || '#EFF6FF' }]}>
             <Text style={styles.iconText}>{item.icon}</Text>
           </View>
           <View style={styles.textContainer}>
             <Text style={styles.topicTitle}>{item.title}</Text>
             <Text style={styles.topicDescription}>{item.shortDescription}</Text>
           </View>
-          <Text style={styles.chevron}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
         </View>
       </Card>
     </TouchableOpacity>
@@ -37,13 +40,7 @@ export default function EducationHomeScreen() {
       />
 
       <View style={styles.header}>
-        <Button
-          title="← Volver al inicio"
-          variant="outline"
-          onPress={() => router.replace('/(student)')}
-          style={styles.backButton}
-        />
-        <Text style={styles.headerTitle}>Información y Prevención</Text>
+        <Text style={styles.headerTitle}>Información y prevención</Text>
         <Text style={styles.headerSubtitle}>
           Guías orientativas sobre convivencia, cuidado digital y canales de ayuda escolar
         </Text>
@@ -53,7 +50,10 @@ export default function EducationHomeScreen() {
         data={EDUCATIONAL_TOPICS}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: Math.max(insets.bottom, 24) + 20 },
+        ]}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -68,16 +68,10 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 10,
+    paddingBottom: 14,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    marginBottom: 8,
   },
   headerTitle: {
     fontSize: 22,
@@ -99,6 +93,7 @@ const styles = StyleSheet.create({
   },
   topicCard: {
     padding: 16,
+    borderRadius: 14,
     borderColor: '#E2E8F0',
   },
   cardContent: {
@@ -107,15 +102,14 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    width: 52,
+    height: 52,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconText: {
-    fontSize: 22,
+    fontSize: 26,
   },
   textContainer: {
     flex: 1,
@@ -130,11 +124,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     lineHeight: 16,
-  },
-  chevron: {
-    fontSize: 22,
-    color: '#94A3B8',
-    fontWeight: '300',
-    marginLeft: 4,
   },
 });

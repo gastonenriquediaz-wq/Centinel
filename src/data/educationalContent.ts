@@ -10,6 +10,7 @@ export interface EducationalTopic {
   title: string;
   shortDescription: string;
   icon: string; // Emoji o identificador de icono
+  iconBg?: string; // Fondo para el icono según maqueta
   intro: string;
   sections: EducationalSection[];
   keyAdvice: string;
@@ -21,6 +22,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     title: '¿Qué es el acoso escolar?',
     shortDescription: 'Definición, características y manifestaciones del acoso escolar.',
     icon: '📖',
+    iconBg: '#EFF6FF',
     intro:
       'El acoso escolar (o bullying) es una forma de violencia que se da entre pares en el ámbito educativo. Conocer sus rasgos fundamentales nos ayuda a distinguirlo de desacuerdos cotidianos y a actuar a tiempo.',
     sections: [
@@ -55,6 +57,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     title: '¿Qué es el ciberacoso?',
     shortDescription: 'Situaciones de hostigamiento en redes sociales, mensajes y entornos digitales.',
     icon: '📱',
+    iconBg: '#EFF6FF',
     intro:
       'El ciberacoso (o cyberbullying) ocurre cuando se utilizan tecnologías digitales —redes sociales, plataformas de mensajería, juegos en línea— para intimidar, avergonzar o agredir de forma sostenida a un estudiante.',
     sections: [
@@ -86,7 +89,8 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     id: 'que-puedo-hacer-si-me-pasa-a-mi',
     title: '¿Qué puedo hacer si me pasa a mí?',
     shortDescription: 'Orientaciones para buscar acompañamiento y comunicar lo que sucede.',
-    icon: '🤍',
+    icon: '❤️',
+    iconBg: '#FEE2E2',
     intro:
       'Atravesar una situación de hostigamiento puede generar angustia, temor o sensación de soledad. Saber que no tenés la culpa y que existen caminos de acompañamiento es fundamental para salir de esa situación.',
     sections: [
@@ -109,6 +113,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     title: '¿Qué puedo hacer si le pasa a otra persona?',
     shortDescription: 'Cómo actuar como testigo sin exponerse ni agravar la situación.',
     icon: '👥',
+    iconBg: '#EFF6FF',
     intro:
       'El grupo de pares desempeña un papel determinante frente al acoso. La mirada de los testigos puede frenar el hostigamiento o, por el contrario, reforzarlo si se guarda silencio o se festejan las agresiones.',
     sections: [
@@ -135,6 +140,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     title: '¿Cuándo pedir ayuda?',
     shortDescription: 'Señales de preocupación y motivos para acudir a un adulto responsable.',
     icon: '💬',
+    iconBg: '#FEF9C3',
     intro:
       'Muchas veces los adolescentes dudan antes de comunicar una situación por temor a equivocarse o a que se considere algo menor. Conocer los momentos oportunos para buscar acompañamiento previene situaciones de mayor gravedad.',
     sections: [
@@ -161,10 +167,38 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
       'Buscar ayuda a tiempo evita que el conflicto escale. Los adultos de la escuela están para orientar y proteger el espacio compartido.',
   },
   {
+    id: 'canales-institucionales-de-ayuda',
+    title: 'Canales institucionales de ayuda',
+    shortDescription:
+      'Cómo solicitar apoyo del director o vicedirector y utilizar Centinel para comunicar situaciones.',
+    icon: '🏫',
+    iconBg: '#ECFDF5',
+    intro:
+      'Las escuelas cuentan con responsabilidades y procedimientos establecidos para resguardar a sus estudiantes. Conocer cómo funciona Centinel y cuáles son sus alcances te permite utilizarlo de manera informada y responsable.',
+    sections: [
+      {
+        subtitle: 'El rol de los directivos escolares',
+        body: 'El Director y el Vicedirector de tu institución educativa son las autoridades legalmente facultadas para intervenir, coordinar con docentes, citar a las familias, labrar actas de actuación y articular con equipos interdisciplinarios cuando sea necesario.',
+      },
+      {
+        subtitle: 'Cómo funciona Centinel dentro de tu colegio',
+        body: 'Centinel brinda un medio seguro para hacer llegar información a esas autoridades:',
+        recommendations: [
+          'Confidencial frente a compañeros: Ningún otro estudiante puede ver tus reportes, descripciones, evidencias o mensajes.',
+          'No es anónimo: Para garantizar la seriedad de la comunicación y permitir que las autoridades puedan protegerte y dar seguimiento adecuado, los directivos conocen la identidad de quien reporta.',
+          'Canal complementario: La aplicación facilita la comunicación escrita inicial y el registro de evidencias, pero complementa —y no sustituye— las reuniones presenciales, las instancias de escucha personal y las normativas institucionales.',
+        ],
+      },
+    ],
+    keyAdvice:
+      'Centinel es una herramienta institucional para cuidarte. Usala con responsabilidad, veracidad y compromiso con el bienestar de toda la comunidad escolar.',
+  },
+  {
     id: 'convivencia-y-respeto',
     title: 'Convivencia y respeto',
     shortDescription: 'Empatía, inclusión, respeto y uso responsable de los medios digitales.',
     icon: '🤝',
+    iconBg: '#EEF2FF',
     intro:
       'Una comunidad educativa saludable se construye con pequeñas actitudes cotidianas de reconocimiento hacia los demás, aceptando las diversidades como parte natural de la vida comunitaria.',
     sections: [
@@ -185,31 +219,5 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     ],
     keyAdvice:
       'La convivencia armónica no significa ausencia de diferencias, sino la capacidad de resolverlas con diálogo, escucha activa y empatía.',
-  },
-  {
-    id: 'canales-institucionales-de-ayuda',
-    title: 'Canales institucionales de ayuda',
-    shortDescription:
-      'Cómo solicitar apoyo del director o vicedirector y utilizar Centinel para comunicar situaciones.',
-    icon: '🏫',
-    intro:
-      'Las escuelas cuentan con responsabilidades y procedimientos establecidos para resguardar a sus estudiantes. Conocer cómo funciona Centinel y cuáles son sus alcances te permite utilizarlo de manera informada y responsable.',
-    sections: [
-      {
-        subtitle: 'El rol de los directivos escolares',
-        body: 'El Director y el Vicedirector de tu institución educativa son las autoridades legalmente facultadas para intervenir, coordinar con docentes, citar a las familias, labrar actas de actuación y articular con equipos interdisciplinarios cuando sea necesario.',
-      },
-      {
-        subtitle: 'Cómo funciona Centinel dentro de tu colegio',
-        body: 'Centinel brinda un medio seguro para hacer llegar información a esas autoridades:',
-        recommendations: [
-          'Confidencial frente a compañeros: Ningún otro estudiante puede ver tus reportes, descripciones, evidencias o mensajes.',
-          'No es anónimo: Para garantizar la seriedad de la comunicación y permitir que las autoridades puedan protegerte y dar seguimiento adecuado, los directivos conocen la identidad de quien reporta.',
-          'Canal complementario: La aplicación facilita la comunicación escrita inicial y el registro de evidencias, pero complementa —y no sustituye— las reuniones presenciales, las instancias de escucha personal y las normativas institucionales.',
-        ],
-      },
-    ],
-    keyAdvice:
-      'Centinel es una herramienta institucional para cuidarte. Usala con responsabilidad, veracidad y compromiso con el bienestar de toda la comunidad escolar.',
   },
 ];
