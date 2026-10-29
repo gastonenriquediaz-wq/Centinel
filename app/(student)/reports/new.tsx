@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Card } from '../../../src/components/ui/Card';
 import { Input } from '../../../src/components/ui/Input';
@@ -51,6 +52,7 @@ interface AggressorItem {
 
 export default function NewReportScreen() {
   const { profile, institution } = useAuthStore();
+  const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -360,7 +362,16 @@ export default function NewReportScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        {
+          paddingTop: Math.max(insets.top, 24) + 12,
+          paddingBottom: Math.max(insets.bottom, 24) + 40,
+        },
+      ]}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Ocultar encabezado de navegación nativo que mostraba "(Student)/reports/new" */}
       <Stack.Screen options={{ headerShown: false }} />
 
