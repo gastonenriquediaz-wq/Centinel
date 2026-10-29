@@ -11,12 +11,14 @@ interface ButtonProps extends TouchableOpacityProps {
   title: string;
   loading?: boolean;
   variant?: 'primary' | 'secondary' | 'danger' | 'outline';
+  icon?: React.ReactNode;
 }
 
 export const Button: React.FC<ButtonProps> = ({
   title,
   loading = false,
   variant = 'primary',
+  icon,
   disabled,
   style,
   ...props
@@ -40,15 +42,19 @@ export const Button: React.FC<ButtonProps> = ({
           color={variant === 'outline' || variant === 'secondary' ? '#1E3A8A' : '#FFFFFF'}
         />
       ) : (
-        <Text
-          style={[
-            styles.text,
-            styles[`${variant}Text`],
-            isActionDisabled && styles.disabledText,
-          ]}
-        >
-          {title}
-        </Text>
+        <>
+          {icon}
+          <Text
+            style={[
+              styles.text,
+              styles[`${variant}Text`],
+              isActionDisabled && styles.disabledText,
+              icon ? { marginLeft: 8 } : null,
+            ]}
+          >
+            {title}
+          </Text>
+        </>
       )}
     </TouchableOpacity>
   );

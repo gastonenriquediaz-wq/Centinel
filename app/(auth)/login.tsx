@@ -7,8 +7,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../../src/components/ui/Input';
 import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
@@ -18,6 +20,7 @@ import { useAuthStore } from '../../src/store/auth.store';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusBlockedInfo, setStatusBlockedInfo] = useState<string | null>(null);
@@ -101,7 +104,7 @@ export default function LoginScreen() {
         </View>
 
         <Card style={styles.card}>
-          <Text style={styles.formTitle}>Iniciar Sesión</Text>
+          <Text style={styles.formTitle}>Iniciar sesión</Text>
 
           {statusBlockedInfo && (
             <View style={styles.alertBoxWarning}>
@@ -117,8 +120,9 @@ export default function LoginScreen() {
           )}
 
           <Input
-            label="Correo electrónico institucional / personal"
+            label="Correo electrónico"
             placeholder="ejemplo@correo.com"
+            helperText="Usá el correo registrado en tu cuenta."
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -128,24 +132,42 @@ export default function LoginScreen() {
 
           <Input
             label="Contraseña"
-            placeholder="••••••••"
+            placeholder="Ingresá tu contraseña"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            secureTextEntry={!showPassword}
+            rightAccessory={
+              <TouchableOpacity
+                onPress={() => setShowPassword((prev) => !prev)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={22}
+                  color="#64748B"
+                />
+              </TouchableOpacity>
+            }
           />
+
+          <View style={styles.forgotPasswordRow}>
+            <TouchableOpacity
+              onPress={() => router.push('/(auth)/forgot-password')}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+            </TouchableOpacity>
+          </View>
 
           <Button
             title="Ingresar"
             onPress={handleLogin}
             loading={loading}
             style={styles.loginButton}
-          />
-
-          <Button
-            title="¿Olvidaste tu contraseña?"
-            variant="outline"
-            onPress={() => router.push('/(auth)/forgot-password')}
-            style={styles.forgotButton}
           />
 
           <View style={styles.dividerBox}>
@@ -155,8 +177,9 @@ export default function LoginScreen() {
           </View>
 
           <Button
-            title="Registrarse con Código QR"
+            title="Registrarse con código QR"
             variant="secondary"
+            icon={<Ionicons name="qr-code-outline" size={18} color="#0F172A" />}
             onPress={() => router.push('/(auth)/register')}
             style={styles.registerButton}
           />
@@ -164,10 +187,10 @@ export default function LoginScreen() {
 
         <View style={styles.footerNotice}>
           <Text style={styles.noticeText}>
-            Centinel · Universidad Católica de Salta
+            El registro requiere un código QR institucional y la aprobación de una autoridad educativa.
           </Text>
           <Text style={styles.noticeSubtext}>
-            La incorporación de estudiantes requiere el escaneo de un código QR institucional provisto por las autoridades.
+            Proyecto de grado · Universidad Católica de Salta
           </Text>
         </View>
       </ScrollView>
@@ -212,10 +235,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   loginButton: {
-    marginTop: 8,
+    marginTop: 4,
   },
-  forgotButton: {
-    marginTop: 12,
+  forgotPasswordRow: {
+    alignItems: 'flex-end',
+    marginTop: -4,
+    marginBottom: 18,
+  },
+  forgotPasswordText: {
+    color: '#2563EB',
+    fontSize: 14,
+    fontWeight: '500',
   },
   dividerBox: {
     flexDirection: 'row',
@@ -271,20 +301,21 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   footerNotice: {
-    marginTop: 24,
+    marginTop: 20,
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
   noticeText: {
     fontSize: 12,
-    fontWeight: '600',
     color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 8,
   },
   noticeSubtext: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#94A3B8',
     textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 16,
+    fontWeight: '500',
   },
 });
