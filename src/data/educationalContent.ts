@@ -52,7 +52,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
       },
     ],
     keyAdvice:
-      'Si vos o alguien que conocés está atravesando una situación de acoso escolar, no la minimices.\n\nHablá con un adulto de confianza o con las autoridades de tu institución educativa. No tenés que resolverlo por tu cuenta.\n\nRecordá que podés utilizar Centinel para comunicar situaciones que te afecten o que hayas presenciado.',
+      'Si vos o alguien que conocés está atravesando una situación de acoso escolar, no la minimices.\n\nHablá con un adulto de confianza o con las autoridades de tu institución educativa. No tenés que resolverlo por tu cuenta.',
   },
   {
     id: 'que-es-el-ciberacoso',
@@ -85,7 +85,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
       },
     ],
     keyAdvice:
-      'Lo que sucede en Internet puede afectar seriamente a las personas.\n\nSi vos o alguien que conocés está sufriendo ciberacoso, no respondas con agresiones ni difundas el contenido. Buscá ayuda de un adulto de confianza o de las autoridades de tu institución.\n\nRecordá que también podés utilizar Centinel para comunicar lo sucedido y solicitar acompañamiento.',
+      'Lo que sucede en Internet puede afectar seriamente a las personas.\n\nSi vos o alguien que conocés está sufriendo ciberacoso, no respondas con agresiones ni difundas el contenido. Buscá ayuda de un adulto de confianza o de las autoridades de tu institución.',
   },
   {
     id: 'que-puedo-hacer-si-me-pasa-a-mi',
