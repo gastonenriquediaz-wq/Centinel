@@ -104,11 +104,12 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
           'Recurrir a un adulto de confianza: Puede ser tu mamá, papá, tutor, un profesor, el preceptor, directivos o profesionales de orientación escolar.',
           'Evitar enfrentamientos directos que eleven el riesgo: Responder con violencia física o verbal puede ponerte en mayor peligro o desviar la atención de la agresión original.',
           'Utilizar Centinel para informar a la escuela: Podés registrar lo sucedido desde la aplicación para que el equipo directivo tome conocimiento formal y pueda brindarte contención institucional.',
+          'Buscar ayuda inmediata si estás en peligro: Si sufrís amenazas graves, agresiones físicas o sentís que tu seguridad está en riesgo, buscá un lugar seguro y pedí ayuda inmediatamente a un adulto de confianza o a los servicios de emergencia. No esperes una respuesta dentro de Centinel para recibir asistencia.',
         ],
       },
     ],
     keyAdvice:
-      'Pedir ayuda no es ser débil ni exagerar: es un acto de cuidado propio para que la escuela pueda activar los protocolos de resguardo y escucha.',
+      'Pedir ayuda no es una señal de debilidad. Si estás atravesando una situación de acoso, hablá con alguien de confianza.\n\nNo tenés que enfrentar lo que está pasando por tu cuenta. Tu institución educativa puede orientarte y acompañarte.',
   },
   {
     id: 'que-puedo-hacer-si-le-pasa-a-otra-persona',
