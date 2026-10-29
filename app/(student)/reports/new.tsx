@@ -68,8 +68,10 @@ export default function NewReportScreen() {
   const [occurredAtDate] = useState(new Date().toISOString().split('T')[0]);
 
   // --- PASO 2 STATE ---
-  // 1_ ¿Quién sufrió la situación?
-  const [affectedPersonOption, setAffectedPersonOption] = useState<'me_affected' | 'other_affected' | ''>('');
+  // 1_ ¿Quién o quiénes fueron afectados?
+  const [affectedPersonOption, setAffectedPersonOption] = useState<
+    'me_affected' | 'other_affected' | 'both_affected' | ''
+  >('');
   const [affectedPersonOtherName, setAffectedPersonOtherName] = useState('');
 
   // 2_ ¿Quiénes realizaron las agresiones?
@@ -231,13 +233,16 @@ export default function NewReportScreen() {
 
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      // 1_ Quién sufrió la situación
+      // 1_ Quién o quiénes fueron afectados
       if (!affectedPersonOption) {
-        Alert.alert('Campo requerido', 'Por favor indica quién sufrió la situación.');
+        Alert.alert('Campo requerido', 'Por favor indicá quién o quiénes fueron afectados.');
         return;
       }
-      if (affectedPersonOption === 'other_affected' && !affectedPersonOtherName.trim()) {
-        Alert.alert('Campo requerido', 'Por favor ingresa el nombre y apellido de la persona afectada.');
+      if (
+        (affectedPersonOption === 'other_affected' || affectedPersonOption === 'both_affected') &&
+        !affectedPersonOtherName.trim()
+      ) {
+        Alert.alert('Campo requerido', 'Por favor ingresá el nombre y apellido de la persona afectada.');
         return;
       }
 
@@ -285,8 +290,10 @@ export default function NewReportScreen() {
     // Persona afectada
     if (affectedPersonOption === 'me_affected') {
       parts.push('Afectado: El propio estudiante que reporta');
+    } else if (affectedPersonOption === 'both_affected') {
+      parts.push(`Afectados: El estudiante que reporta y otra persona (${affectedPersonOtherName.trim()})`);
     } else {
-      parts.push(`Afectado: ${affectedPersonOtherName.trim()}`);
+      parts.push(`Afectado: Otra persona (${affectedPersonOtherName.trim()})`);
     }
 
     // Agresores
@@ -499,15 +506,19 @@ export default function NewReportScreen() {
       {/* ===================== PASO 2 ===================== */}
       {currentStep === 2 && (
         <View style={styles.stepContainer}>
-          {/* 1_ ¿Quién sufrió la situación? */}
+          {/* 1_ ¿Quién o quiénes fueron afectados? */}
           <Card style={styles.card}>
-            <Text style={styles.label}>1_ ¿Quién sufrió la situación?</Text>
+            <Text style={styles.label}>1_ ¿Quién o quiénes fueron afectados?</Text>
+            <Text style={styles.helperTextNotice}>
+              Seleccioná la opción que corresponda:
+            </Text>
+
             <TouchableOpacity
               style={[styles.radioItem, affectedPersonOption === 'me_affected' && styles.radioItemSelected]}
               onPress={() => setAffectedPersonOption('me_affected')}
             >
               <View style={[styles.radioDot, affectedPersonOption === 'me_affected' && styles.radioDotSelected]} />
-              <Text style={styles.radioText}>Yo soy una de las personas afectadas</Text>
+              <Text style={styles.radioText}>Yo fui una de las personas afectadas.</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -515,13 +526,21 @@ export default function NewReportScreen() {
               onPress={() => setAffectedPersonOption('other_affected')}
             >
               <View style={[styles.radioDot, affectedPersonOption === 'other_affected' && styles.radioDotSelected]} />
-              <Text style={styles.radioText}>Es otra la persona afectada</Text>
+              <Text style={styles.radioText}>Otra persona fue afectada.</Text>
             </TouchableOpacity>
 
-            {affectedPersonOption === 'other_affected' && (
+            <TouchableOpacity
+              style={[styles.radioItem, affectedPersonOption === 'both_affected' && styles.radioItemSelected]}
+              onPress={() => setAffectedPersonOption('both_affected')}
+            >
+              <View style={[styles.radioDot, affectedPersonOption === 'both_affected' && styles.radioDotSelected]} />
+              <Text style={styles.radioText}>Tanto yo como otras personas fuimos afectadas.</Text>
+            </TouchableOpacity>
+
+            {(affectedPersonOption === 'other_affected' || affectedPersonOption === 'both_affected') && (
               <Input
                 label="Nombre y apellido de la persona afectada"
-                placeholder="Ingresa aquí nombre y apellido..."
+                placeholder="Ingresá aquí nombre y apellido..."
                 value={affectedPersonOtherName}
                 onChangeText={setAffectedPersonOtherName}
                 style={styles.customInput}
@@ -529,15 +548,20 @@ export default function NewReportScreen() {
             )}
           </Card>
 
-          {/* 2_ ¿Quiénes realizaron las agresiones? */}
+          {/* 2_ ¿Quiénes participaron en lo sucedido? */}
           <Card style={styles.card}>
-            <Text style={styles.label}>2_ ¿Quiénes realizaron las agresiones?</Text>
+            <Text style={styles.label}>2_ ¿Quiénes participaron en lo sucedido?</Text>
+            <Text style={styles.helperTextNotice}>
+              Si conocés a las personas que participaron, podés indicarlas.{"\n"}
+              Si no lo sabés, podés marcar la primera opción.
+            </Text>
+
             <TouchableOpacity
               style={[styles.radioItem, aggressorsType === 'unknown' && styles.radioItemSelected]}
               onPress={() => setAggressorsType('unknown')}
             >
               <View style={[styles.radioDot, aggressorsType === 'unknown' && styles.radioDotSelected]} />
-              <Text style={styles.radioText}>No sé quiénes fueron</Text>
+              <Text style={styles.radioText}>No sé quiénes participaron</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -545,7 +569,7 @@ export default function NewReportScreen() {
               onPress={() => setAggressorsType('known')}
             >
               <View style={[styles.radioDot, aggressorsType === 'known' && styles.radioDotSelected]} />
-              <Text style={styles.radioText}>Las personas involucradas son:</Text>
+              <Text style={styles.radioText}>Conozco a una o más personas que participaron</Text>
             </TouchableOpacity>
 
             {aggressorsType === 'known' && (
@@ -567,7 +591,7 @@ export default function NewReportScreen() {
                       onChangeText={(val) => handleAggressorChange(index, 'name', val)}
                     />
                     <Input
-                      label="Curso o división (si lo conoces)"
+                      label="Curso o división (si lo conocés)"
                       placeholder="Ej: 3° 2da / No lo sé"
                       value={aggressor.courseDivision}
                       onChangeText={(val) => handleAggressorChange(index, 'courseDivision', val)}
@@ -620,15 +644,17 @@ export default function NewReportScreen() {
           {/* 4_ Descripción de lo sucedido */}
           <Card style={styles.card}>
             <Text style={styles.label}>4_ Descripción de lo sucedido</Text>
+            <Text style={styles.helperTextNotice}>
+              Contá con tus palabras qué pasó, qué hicieron o dijeron las personas involucradas, cuándo ocurrió y cómo te sentiste. No te preocupes si no recordás todos los detalles.
+            </Text>
             <Input
-              label="Detalle de lo ocurrido"
-              placeholder="Describe lo ocurrido con el mayor detalle posible: qué pasó, cuándo comenzó, qué se dijeron o hicieron..."
+              placeholder="Escribe aquí la descripción de lo sucedido..."
               value={description}
               onChangeText={setDescription}
               multiline
               numberOfLines={6}
             />
-            <Text style={styles.helperText}>Mínimo 15 caracteres. Recuerda que no se podrá editar una vez enviado.</Text>
+            <Text style={styles.helperText}>Mínimo 15 caracteres. Recordá que no se podrá editar una vez enviado.</Text>
           </Card>
 
           <View style={styles.rowButtons}>
@@ -732,9 +758,11 @@ export default function NewReportScreen() {
           <Card style={styles.summaryCard}>
             <Text style={styles.summaryHeader}>Resumen de la Comunicación</Text>
             <Text style={styles.summaryItem}>
-              <Text style={styles.bold}>Afectado:</Text>{' '}
+              <Text style={styles.bold}>Afectado(s):</Text>{' '}
               {affectedPersonOption === 'me_affected'
                 ? 'El propio estudiante que reporta'
+                : affectedPersonOption === 'both_affected'
+                ? `El estudiante que reporta y otra persona (${affectedPersonOtherName.trim()})`
                 : `Otra persona (${affectedPersonOtherName.trim()})`}
             </Text>
             <Text style={styles.summaryItem}>
