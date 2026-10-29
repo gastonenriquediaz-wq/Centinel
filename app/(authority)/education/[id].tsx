@@ -1,12 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { EDUCATIONAL_TOPICS, EducationalTopic, EducationalSection } from '../../../src/data/educationalContent';
 
 export default function AuthorityEducationTopicDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
 
   const topic = EDUCATIONAL_TOPICS.find((t: EducationalTopic) => t.id === id);
 
@@ -24,19 +26,17 @@ export default function AuthorityEducationTopicDetailScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: Math.max(insets.bottom, 24) + 20 },
+      ]}
+    >
       <Stack.Screen
         options={{
           title: topic.title,
           headerBackTitle: 'Temas',
         }}
-      />
-
-      <Button
-        title="← Volver a Educación"
-        variant="outline"
-        onPress={() => router.back()}
-        style={styles.navBackButton}
       />
 
       {/* Encabezado e Introducción */}
@@ -70,7 +70,9 @@ export default function AuthorityEducationTopicDetailScreen() {
           {/* Lista de recomendaciones si existen */}
           {sec.recommendations && sec.recommendations.length > 0 && (
             <View style={styles.listContainer}>
-              <Text style={styles.listHeader}>Pautas y criterios formativos:</Text>
+              <Text style={styles.listHeader}>
+                {sec.recommendationsHeader || 'Pautas y criterios formativos:'}
+              </Text>
               {sec.recommendations.map((rec: string, recIdx: number) => (
                 <View key={recIdx} style={styles.bulletItem}>
                   <Text style={styles.bulletDotCheck}>✓</Text>

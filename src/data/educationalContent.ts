@@ -3,6 +3,7 @@ export interface EducationalSection {
   body: string;
   examples?: string[];
   recommendations?: string[];
+  recommendationsHeader?: string;
 }
 
 export interface EducationalTopic {
@@ -28,7 +29,8 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     sections: [
       {
         subtitle: 'Características principales',
-        body: 'Según orientaciones internacionales (como las de UNESCO, 2020), para que una situación se considere acoso escolar suelen concurrir tres factores:',
+        body: 'De acuerdo con las orientaciones de la UNESCO (2020), el acoso escolar presenta tres características principales que permiten diferenciarlo de otros conflictos entre estudiantes:',
+        recommendationsHeader: 'Características del acoso escolar:',
         recommendations: [
           'Intencionalidad: Hay una voluntad deliberada de dañar, intimidar o humillar.',
           'Reiteración: Las conductas hostiles se repiten a lo largo del tiempo.',
@@ -37,7 +39,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
       },
       {
         subtitle: 'Diferencia entre conflicto ocasional y acoso',
-        body: 'En la convivencia escolar es normal que surjan diferencias, enojos o discusiones puntuales entre compañeros. Cuando dos personas tienen una disputa en igualdad de condiciones y sin una persecución sostenida, estamos ante un conflicto que puede resolverse mediante el diálogo. En el acoso escolar, en cambio, una de las partes queda sistemáticamente expuesta al hostigamiento sin posibilidad de frenarlo por sí sola.',
+        body: 'En la convivencia escolar es normal que surjan diferencias, enojos o discusiones puntuales entre compañeros. Cuando dos personas tienen una disputa en igualdad de condiciones y sin una persecución sostenida, estamos ante un conflicto que puede resolverse mediante el diálogo. En el acoso escolar, en cambio, una de las partes queda sistemáticamente expuesta al hostigamiento sin posibilidad de frenarlo por sí sola.\n\nEs importante recordar que no todas las situaciones de violencia escolar constituyen acoso escolar. Sin embargo, una agresión aislada, una amenaza o un conflicto también pueden requerir atención e intervención de las autoridades educativas.\n\nNo es necesario que un estudiante determine por sí mismo si lo ocurrido constituye acoso escolar para comunicarlo o pedir ayuda.',
       },
       {
         subtitle: 'Formas habituales de manifestación',
@@ -50,7 +52,7 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
       },
     ],
     keyAdvice:
-      'Si sentís que alguien está viviendo una situación de hostigamiento reiterado, no la minimices. Compartirlo con adultos es el primer paso para restablecer el cuidado colectivo.',
+      'Si vos o alguien que conocés está atravesando una situación de acoso escolar, no la minimices.\n\nHablá con un adulto de confianza o con las autoridades de tu institución educativa. No tenés que resolverlo por tu cuenta.\n\nRecordá que podés utilizar Centinel para comunicar situaciones que te afecten o que hayas presenciado.',
   },
   {
     id: 'que-es-el-ciberacoso',
