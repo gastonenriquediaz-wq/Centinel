@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { useAuthStore } from '../../src/store/auth.store';
@@ -10,6 +11,7 @@ import { ReportsService } from '../../src/services/reports.service';
 import { CasesService } from '../../src/services/cases.service';
 
 export default function AuthorityDashboard() {
+  const insets = useSafeAreaInsets();
   const { profile, institution, reset } = useAuthStore();
   const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
   const [sentReportsCount, setSentReportsCount] = useState<number>(0);
@@ -58,7 +60,12 @@ export default function AuthorityDashboard() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: Math.max(insets.bottom, 24) + 40 },
+      ]}
+    >
       <Card style={styles.welcomeCard}>
         <View style={styles.badgeRow}>
           <Text style={styles.roleBadge}>Autoridad Educativa</Text>

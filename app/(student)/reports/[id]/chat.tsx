@@ -10,8 +10,10 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { MessagesService } from '../../../../src/services/messages.service';
 import { ReportsService } from '../../../../src/services/reports.service';
@@ -19,13 +21,30 @@ import { Report, ReportMessage } from '../../../../src/types/database.types';
 
 export default function StudentReportChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();
   const [report, setReport] = useState<Report | null>(null);
   const [messages, setMessages] = useState<ReportMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -203,13 +222,27 @@ export default function StudentReportChatScreen() {
 
       {/* Barra de entrada o aviso de canal cerrado */}
       {isClosedOrFinalized ? (
-        <View style={styles.closedNoticeBox}>
+        <View
+          style={[
+            styles.closedNoticeBox,
+            { paddingBottom: Math.max(insets.bottom, 16) + 8 },
+          ]}
+        >
           <Text style={styles.closedNoticeText}>
             🔒 Este reporte se encuentra cerrado o finalizado. El canal de comunicación ha pasado a modo de solo lectura.
           </Text>
         </View>
       ) : (
-        <View style={styles.inputContainer}>
+        <View
+          style={[
+            styles.inputContainer,
+            {
+              paddingBottom: isKeyboardVisible
+                ? 10
+                : Math.max(insets.bottom, 14) + 8,
+            },
+          ]}
+        >
           <TextInput
             style={styles.textInput}
             placeholder="Escribe un mensaje confidencial..."
@@ -361,7 +394,8 @@ const styles = StyleSheet.create({
   },
   closedNoticeBox: {
     backgroundColor: '#F1F5F9',
-    padding: 16,
+    paddingTop: 16,
+    paddingHorizontal: 16,
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
@@ -375,7 +409,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 10,
+    paddingTop: 10,
     paddingHorizontal: 14,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
