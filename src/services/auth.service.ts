@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Profile, Institution } from '../types/database.types';
+import { Profile, Institution, Course } from '../types/database.types';
 
 export const AuthService = {
   /**
@@ -16,14 +16,16 @@ export const AuthService = {
     }
 
     // Obtener el perfil asociado en public.profiles
-    const { profile, institution } = await this.getProfile(data.user.id);
-    return { session: data.session, user: data.user, profile, institution };
+    const { profile, institution, course } = await this.getProfile(data.user.id);
+    return { session: data.session, user: data.user, profile, institution, course };
   },
 
   /**
-   * Obtiene el perfil de un usuario y los datos de su institución.
+   * Obtiene el perfil de un usuario, su institución y curso asignado.
    */
-  async getProfile(userId: string): Promise<{ profile: Profile; institution: Institution | null }> {
+  async getProfile(
+    userId: string
+  ): Promise<{ profile: Profile; institution: Institution | null; course: Course | null }> {
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
@@ -44,7 +46,17 @@ export const AuthService = {
       institution = instData ?? null;
     }
 
-    return { profile, institution };
+    let course: Course | null = null;
+    if (profile.course_id) {
+      const { data: courseData } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('id', profile.course_id)
+        .maybeSingle();
+      course = courseData ?? null;
+    }
+
+    return { profile, institution, course };
   },
 
   /**

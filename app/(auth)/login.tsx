@@ -38,7 +38,7 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
-      const { session, profile, institution } = await AuthService.signIn(email, password);
+      const { session, profile, institution, course } = await AuthService.signIn(email, password);
 
       // Verificación de estado de cuenta (RF-07 y RF-08)
       if (profile.account_status !== 'approved') {
@@ -67,7 +67,7 @@ export default function LoginScreen() {
 
       // Cuenta aprobada: guardar en store global
       setSession(session);
-      setProfile(profile, institution);
+      setProfile(profile, institution, course);
 
       // Redirigir según rol
       if (profile.role === 'student') {

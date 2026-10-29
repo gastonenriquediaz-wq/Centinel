@@ -17,12 +17,12 @@ export default function RootLayout() {
         const session = await AuthService.getSession();
         if (session?.user) {
           try {
-            const { profile: userProfile, institution } = await AuthService.getProfile(
+            const { profile: userProfile, institution, course } = await AuthService.getProfile(
               session.user.id
             );
             if (userProfile.account_status === 'approved') {
               setSession(session);
-              setProfile(userProfile, institution);
+              setProfile(userProfile, institution, course);
               if (userProfile.role === 'student') {
                 router.replace('/(student)');
               } else if (userProfile.role === 'authority') {
@@ -91,7 +91,7 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="(student)/index"
-          options={{ title: 'Centinel - Estudiante', headerShown: true }}
+          options={{ title: 'Centinel', headerShown: true }}
         />
         <Stack.Screen
           name="(authority)/index"
