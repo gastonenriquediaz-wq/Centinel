@@ -118,20 +118,21 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     icon: '👥',
     iconBg: '#EFF6FF',
     intro:
-      'El grupo de pares desempeña un papel determinante frente al acoso. La mirada de los testigos puede frenar el hostigamiento o, por el contrario, reforzarlo si se guarda silencio o se festejan las agresiones.',
+      'Los compañeros que presencian una situación de acoso escolar pueden desempeñar un papel importante. Sus acciones pueden ayudar a detener el hostigamiento o, por el contrario, reforzarlo cuando se festejan las agresiones o se participa en las burlas.\n\nSi presenciás una situación de este tipo, existen maneras de ayudar sin ponerte en peligro.',
     sections: [
       {
         subtitle: 'El rol de los observadores o testigos',
-        body: 'La UNESCO y diversos organismos especializados señalan que el hostigamiento se sostiene cuando los agresores obtienen reconocimiento o complicidad del grupo. Por eso, modificar la respuesta grupal es una de las herramientas preventivas más poderosas.',
+        body: 'Cuando una persona agrede a otra, las risas, los comentarios o el apoyo de quienes observan pueden reforzar ese comportamiento.\n\nEn cambio, no participar de las burlas, acompañar a la persona afectada y comunicar lo ocurrido a un adulto responsable son formas de contribuir a una convivencia escolar más segura.',
       },
       {
         subtitle: 'Pautas de acción responsable',
         body: 'Podés colaborar positivamente de las siguientes maneras:',
         recommendations: [
           'No amplificar el daño: No te rías, no compartas fotos, memes o comentarios que humillen a un compañero.',
-          'Brindar apoyo cercano: Acercate a la persona afectada en los recreos o actividades cotidianas para que no se sienta sola.',
+          'Brindar apoyo cercano: Si es seguro hacerlo, acercate a la persona afectada, escuchala y hacéle saber que puede contar con tu apoyo. No la presiones para que cuente lo sucedido ni te enfrentes a quienes la agreden.',
           'Avisar a un adulto responsable: Comunicar un hecho de violencia a los docentes o directivos no es "delatar", es un acto de empatía y cuidado mutuo.',
-          'Utilizar Centinel como testigo: La aplicación te permite enviar un reporte indicando que la situación le ocurre a otra persona, resguardando la información dentro del canal directivo.',
+          'Utilizar Centinel para comunicar lo sucedido: Si presenciaste una situación que afecta a otro estudiante, podés enviar un reporte indicando que se trata de una situación que le ocurrió a otra persona. La información será accesible únicamente para vos y las autoridades educativas autorizadas de tu institución, quienes podrán evaluar lo ocurrido y determinar cómo proceder.',
+          'Pedir ayuda inmediata cuando sea necesario: Si presenciás una agresión física grave, amenazas o una situación de peligro, buscá ayuda de un adulto responsable o de los servicios de emergencia. No intentes intervenir por tu cuenta si eso puede ponerte en riesgo.',
         ],
       },
     ],
