@@ -87,7 +87,7 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="(auth)/forgot-password"
-          options={{ title: 'Recuperar Contraseña', headerShown: true }}
+          options={{ title: 'Recuperar acceso', headerShown: true }}
         />
         <Stack.Screen
           name="(student)/index"

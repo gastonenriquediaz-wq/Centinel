@@ -7,7 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { Input } from '../../src/components/ui/Input';
 import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
@@ -45,6 +45,7 @@ export default function ForgotPasswordScreen() {
       style={styles.keyboardView}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Stack.Screen options={{ title: 'Recuperar acceso' }} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -52,7 +53,7 @@ export default function ForgotPasswordScreen() {
         <Card style={styles.card}>
           <Text style={styles.title}>Recuperar Contraseña</Text>
           <Text style={styles.description}>
-            Ingresá el correo electrónico registrado con tu cuenta institucional. Te enviaremos un enlace seguro para restablecer tu contraseña.
+            Ingresá el correo electrónico con el que registraste tu cuenta. Te enviaremos un enlace para restablecer tu contraseña.
           </Text>
 
           {success ? (
@@ -91,13 +92,6 @@ export default function ForgotPasswordScreen() {
                 loading={loading}
                 style={styles.submitButton}
               />
-
-              <Button
-                title="Volver"
-                variant="outline"
-                onPress={() => router.back()}
-                style={styles.cancelButton}
-              />
             </>
           )}
         </Card>
@@ -113,8 +107,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     padding: 20,
+    paddingTop: 20,
   },
   card: {
     padding: 24,
@@ -135,9 +129,6 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 8,
-  },
-  cancelButton: {
-    marginTop: 12,
   },
   backButton: {
     marginTop: 16,
