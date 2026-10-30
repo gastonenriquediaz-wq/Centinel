@@ -235,15 +235,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: '#0F172A',
   },
   actionDesc: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#64748B',
     marginTop: 4,
-    lineHeight: 18,
+    lineHeight: 21,
     textAlign: 'justify',
   },
   actionButtons: {
@@ -268,10 +268,10 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   infoText: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#64748B',
     marginTop: 4,
-    lineHeight: 18,
+    lineHeight: 21,
     textAlign: 'justify',
   },
   urgentNoticeBox: {
@@ -281,9 +281,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   noteText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#B91C1C',
-    lineHeight: 16,
+    lineHeight: 19,
     fontWeight: '500',
     textAlign: 'justify',
   },
