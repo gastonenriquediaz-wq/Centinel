@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { router, useFocusEffect, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Card } from '../../src/components/ui/Card';
+import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../src/components/ui/Button';
 import { useAuthStore } from '../../src/store/auth.store';
 import { AuthService } from '../../src/services/auth.service';
@@ -15,6 +15,7 @@ export default function AuthorityDashboard() {
   const { profile, institution, reset } = useAuthStore();
   const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
   const [sentReportsCount, setSentReportsCount] = useState<number>(0);
+  const [inProgressReportsCount, setInProgressReportsCount] = useState<number>(0);
   const [activeCasesCount, setActiveCasesCount] = useState<number>(0);
 
   const loadDashboardMetrics = async () => {
@@ -24,13 +25,13 @@ export default function AuthorityDashboard() {
       const requests = await StudentsService.getPendingRequests(profile.institution_id);
       setPendingRequestsCount(requests.length);
 
-      // 2. Reportes con estado 'sent' (pendientes de revisión)
-      const { data: sentReports } = await ReportsService.getInstitutionReports(
-        profile.institution_id,
-        'sent'
+      // 2. Reportes: nuevos ('sent') y en atención ('in_progress')
+      const { data: allReports } = await ReportsService.getInstitutionReports(
+        profile.institution_id
       );
-      if (sentReports) {
-        setSentReportsCount(sentReports.length);
+      if (allReports) {
+        setSentReportsCount(allReports.filter((r) => r.status === 'sent').length);
+        setInProgressReportsCount(allReports.filter((r) => r.status === 'in_progress').length);
       }
 
       // 3. Casos activos ('open' o 'under_investigation')
@@ -51,270 +52,481 @@ export default function AuthorityDashboard() {
   );
 
   const handleLogout = async () => {
-    try {
-      await AuthService.signOut();
-    } finally {
-      reset();
-      router.replace('/(auth)/login');
-    }
+    Alert.alert(
+      'Cerrar sesión',
+      '¿Estás seguro de que deseás cerrar la sesión de autoridad?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cerrar sesión',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AuthService.signOut();
+            } finally {
+              reset();
+              router.replace('/(auth)/login');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.container,
-        { paddingBottom: Math.max(insets.bottom, 24) + 40 },
-      ]}
-    >
-      <Card style={styles.welcomeCard}>
-        <View style={styles.badgeRow}>
-          <Text style={styles.roleBadge}>Autoridad Educativa</Text>
-          {profile?.position && (
-            <Text style={styles.positionBadge}>{profile.position}</Text>
-          )}
-        </View>
-        <Text style={styles.userName}>
-          {profile?.first_name} {profile?.last_name}
-        </Text>
-        <Text style={styles.institutionName}>
-          {institution?.name || 'Institución educativa'}
-        </Text>
-      </Card>
-
-      <Text style={styles.sectionHeader}>Gestión Institucional</Text>
-
-      {/* Acceso a Recepción de Reportes */}
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => router.push('/(authority)/reports')}
-      >
-        <Card style={styles.menuCard}>
-          <View style={styles.menuInfo}>
-            <Text style={styles.menuTitle}>Recepción de Reportes</Text>
-            <Text style={styles.menuDesc}>
-              Bandeja de comunicaciones y evidencias enviadas por los alumnos.
-            </Text>
-          </View>
-          {sentReportsCount > 0 ? (
-            <View style={styles.alertBadge}>
-              <Text style={styles.alertBadgeText}>{sentReportsCount} nuevo(s)</Text>
+    <>
+      <Stack.Screen
+        options={{
+          title: 'Centinel',
+          headerTitleAlign: 'left',
+          headerTitleStyle: {
+            fontSize: 20,
+            fontWeight: '800',
+            color: '#FFFFFF',
+          },
+          headerStyle: { backgroundColor: '#1E3A8A' },
+          headerTintColor: '#FFFFFF',
+          headerRight: () => (
+            <View style={styles.headerRightIcons}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() =>
+                  Alert.alert(
+                    'Perfil de Autoridad',
+                    `Usuario: ${profile?.first_name} ${profile?.last_name}\nCargo: ${profile?.position || 'Director'}\nInstitución: ${institution?.name || ''}`
+                  )
+                }
+                style={styles.headerIconBtn}
+              >
+                <Ionicons name="person-circle" size={28} color="#FFFFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() =>
+                  Alert.alert(
+                    'Configuración',
+                    `Centinel v1.0.0\n${institution?.name || ''}\nSistema de Convivencia Escolar.`
+                  )
+                }
+                style={styles.headerIconBtn}
+              >
+                <Ionicons name="settings-sharp" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
-          ) : (
-            <Text style={styles.chevron}>›</Text>
-          )}
-        </Card>
-      </TouchableOpacity>
-
-      {/* Acceso a Casos y Protocolos de Actuación */}
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => router.push('/(authority)/cases')}
-      >
-        <Card style={styles.menuCard}>
-          <View style={styles.menuInfo}>
-            <Text style={styles.menuTitle}>Casos y Protocolos</Text>
-            <Text style={styles.menuDesc}>
-              Expedientes formales, actas de entrevistas, acuerdos y resoluciones.
-            </Text>
-          </View>
-          {activeCasesCount > 0 ? (
-            <View style={styles.caseCountBadge}>
-              <Text style={styles.caseCountText}>{activeCasesCount} activo(s)</Text>
-            </View>
-          ) : (
-            <Text style={styles.chevron}>›</Text>
-          )}
-        </Card>
-      </TouchableOpacity>
-
-      {/* Acceso a Solicitudes de Registro */}
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => router.push('/(authority)/requests')}
-      >
-        <Card style={styles.menuCard}>
-          <View style={styles.menuInfo}>
-            <Text style={styles.menuTitle}>Solicitudes de Registro</Text>
-            <Text style={styles.menuDesc}>
-              Aprobación y rechazo de cuentas estudiantiles registradas con código QR.
-            </Text>
-          </View>
-          {pendingRequestsCount > 0 ? (
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>{pendingRequestsCount}</Text>
-            </View>
-          ) : (
-            <Text style={styles.chevron}>›</Text>
-          )}
-        </Card>
-      </TouchableOpacity>
-
-      {/* Acceso a Cursos y QR / Alfanuméricos */}
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => router.push('/(authority)/courses')}
-      >
-        <Card style={styles.menuCard}>
-          <View style={styles.menuInfo}>
-            <Text style={styles.menuTitle}>Cursos y Códigos QR/Alfanuméricos</Text>
-            <Text style={styles.menuDesc}>
-              Administrar cursos de la institución y generar códigos QR y alfanuméricos de 5 minutos para alumnos.
-            </Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </Card>
-      </TouchableOpacity>
-
-      {/* Acceso a Módulo Educativo y Preventivo */}
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => router.push('/(authority)/education')}
-      >
-        <Card style={styles.menuCard}>
-          <View style={styles.menuInfo}>
-            <Text style={styles.menuTitle}>Módulo Educativo y Preventivo</Text>
-            <Text style={styles.menuDesc}>
-              Guías pedagógicas, criterios formativos sobre acoso escolar, ciberacoso y convivencia.
-            </Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </Card>
-      </TouchableOpacity>
-
-      <Button
-        title="Cerrar Sesión"
-        variant="outline"
-        onPress={handleLogout}
-        style={styles.logoutButton}
+          ),
+        }}
       />
-    </ScrollView>
+
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          { paddingBottom: Math.max(insets.bottom, 24) + 32 },
+        ]}
+      >
+        <Text style={styles.pageTitle}>Panel de autoridad</Text>
+
+        {/* Tarjeta de Usuario / Autoridad */}
+        <View style={styles.userCard}>
+          <View style={styles.badgeRow}>
+            <View style={styles.roleBadgeBox}>
+              <Text style={styles.roleBadgeText}>AUTORIDAD EDUCATIVA</Text>
+            </View>
+            <View style={styles.positionBadgeBox}>
+              <Text style={styles.positionBadgeText}>
+                {profile?.position || 'Director'}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.userName}>
+            {profile?.first_name} {profile?.last_name}
+          </Text>
+          <Text style={styles.institutionName}>
+            {institution?.name || 'Institución educativa'}
+          </Text>
+        </View>
+
+        {/* Sección: Resumen Institucional */}
+        <Text style={styles.sectionHeader}>Resumen institucional</Text>
+        <View style={styles.statsGrid}>
+          {/* Fila 1 */}
+          <View style={styles.statsRow}>
+            {/* Reportes nuevos */}
+            <View style={styles.statCard}>
+              <View style={[styles.statIconCircle, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="document-text" size={20} color="#2563EB" />
+              </View>
+              <View style={styles.statContent}>
+                <Text style={styles.statLabel}>Reportes nuevos</Text>
+                <Text style={[styles.statValue, { color: '#1D4ED8' }]}>{sentReportsCount}</Text>
+              </View>
+            </View>
+
+            {/* Reportes en atención */}
+            <View style={styles.statCard}>
+              <View style={[styles.statIconCircle, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="time" size={20} color="#D97706" />
+              </View>
+              <View style={styles.statContent}>
+                <Text style={styles.statLabel}>Reportes en atención</Text>
+                <Text style={[styles.statValue, { color: '#B45309' }]}>
+                  {inProgressReportsCount}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Fila 2 */}
+          <View style={styles.statsRow}>
+            {/* Casos abiertos */}
+            <View style={styles.statCard}>
+              <View style={[styles.statIconCircle, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="folder" size={20} color="#DC2626" />
+              </View>
+              <View style={styles.statContent}>
+                <Text style={styles.statLabel}>Casos abiertos</Text>
+                <Text style={[styles.statValue, { color: '#DC2626' }]}>{activeCasesCount}</Text>
+              </View>
+            </View>
+
+            {/* Registros pendientes */}
+            <View style={styles.statCard}>
+              <View style={[styles.statIconCircle, { backgroundColor: '#F3E8FF' }]}>
+                <Ionicons name="people" size={20} color="#7C3AED" />
+              </View>
+              <View style={styles.statContent}>
+                <Text style={styles.statLabel}>Registros pendientes</Text>
+                <Text style={[styles.statValue, { color: '#7C3AED' }]}>
+                  {pendingRequestsCount}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Sección: Gestión Institucional */}
+        <Text style={styles.sectionHeader}>Gestión institucional</Text>
+
+        {/* 1. Reportes recibidos */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(authority)/reports')}
+          style={styles.actionCard}
+        >
+          <View style={[styles.actionIconCircle, { backgroundColor: '#EFF6FF' }]}>
+            <Ionicons name="megaphone" size={20} color="#2563EB" />
+          </View>
+          <View style={styles.actionInfo}>
+            <Text style={styles.actionTitle}>Reportes recibidos</Text>
+            <Text style={styles.actionDesc}>
+              Consultar comunicaciones, evidencias y mensajes enviados por estudiantes.
+            </Text>
+          </View>
+          {sentReportsCount > 0 && (
+            <View style={styles.newReportBadge}>
+              <Text style={styles.newReportBadgeText}>{sentReportsCount} nuevo{sentReportsCount > 1 ? 's' : ''}</Text>
+            </View>
+          )}
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        {/* 2. Gestión de casos */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(authority)/cases')}
+          style={styles.actionCard}
+        >
+          <View style={[styles.actionIconCircle, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="folder-outline" size={20} color="#D97706" />
+          </View>
+          <View style={styles.actionInfo}>
+            <Text style={styles.actionTitle}>Gestión de casos</Text>
+            <Text style={styles.actionDesc}>
+              Administrar casos institucionales, actuaciones y estados de seguimiento.
+            </Text>
+          </View>
+          {activeCasesCount > 0 && (
+            <View style={styles.caseBadge}>
+              <Text style={styles.caseBadgeText}>{activeCasesCount} abierto{activeCasesCount > 1 ? 's' : ''}</Text>
+            </View>
+          )}
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        {/* 3. Solicitudes de registro */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(authority)/requests')}
+          style={styles.actionCard}
+        >
+          <View style={[styles.actionIconCircle, { backgroundColor: '#F3E8FF' }]}>
+            <Ionicons name="people-outline" size={20} color="#7C3AED" />
+          </View>
+          <View style={styles.actionInfo}>
+            <Text style={styles.actionTitle}>Solicitudes de registro</Text>
+            <Text style={styles.actionDesc}>
+              Aprobar o rechazar cuentas estudiantiles pendientes.
+            </Text>
+          </View>
+          {pendingRequestsCount > 0 && (
+            <View style={styles.requestBadge}>
+              <Text style={styles.requestBadgeText}>{pendingRequestsCount} pendiente{pendingRequestsCount > 1 ? 's' : ''}</Text>
+            </View>
+          )}
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        {/* 4. Cursos y códigos de registro */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(authority)/courses')}
+          style={styles.actionCard}
+        >
+          <View style={[styles.actionIconCircle, { backgroundColor: '#E0F2FE' }]}>
+            <Ionicons name="grid-outline" size={20} color="#0284C7" />
+          </View>
+          <View style={styles.actionInfo}>
+            <Text style={styles.actionTitle}>Cursos y códigos de registro</Text>
+            <Text style={styles.actionDesc}>
+              Administrar cursos y generar códigos QR o alfanuméricos.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        {/* 5. Aprender y prevenir */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(authority)/education')}
+          style={styles.actionCard}
+        >
+          <View style={[styles.actionIconCircle, { backgroundColor: '#DCFCE7' }]}>
+            <Ionicons name="book-outline" size={20} color="#16A34A" />
+          </View>
+          <View style={styles.actionInfo}>
+            <Text style={styles.actionTitle}>Aprender y prevenir</Text>
+            <Text style={styles.actionDesc}>
+              Consultar contenidos educativos sobre acoso escolar, ciberacoso y convivencia.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        {/* Botón Cerrar Sesión */}
+        <Button
+          title="Cerrar sesión"
+          variant="outline"
+          onPress={handleLogout}
+          style={styles.logoutButton}
+          textStyle={styles.logoutButtonText}
+        />
+      </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     backgroundColor: '#F8FAFC',
     flexGrow: 1,
   },
-  welcomeCard: {
-    padding: 20,
-    backgroundColor: '#EFF6FF',
+  headerRightIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginRight: 6,
+  },
+  headerIconBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 14,
+    letterSpacing: -0.4,
+  },
+  userCard: {
+    backgroundColor: '#F0F6FF',
+    borderRadius: 16,
+    borderWidth: 1,
     borderColor: '#BFDBFE',
+    padding: 16,
     marginBottom: 20,
   },
   badgeRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  roleBadge: {
+  roleBadgeBox: {
     backgroundColor: '#1E3A8A',
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    textTransform: 'uppercase',
-  },
-  positionBadge: {
-    backgroundColor: '#DBEAFE',
-    color: '#1E3A8A',
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  userName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  institutionName: {
-    fontSize: 14,
-    color: '#1E3A8A',
-    fontWeight: '600',
-  },
-  sectionHeader: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#64748B',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  menuCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    marginBottom: 12,
-  },
-  menuInfo: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  menuTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  menuDesc: {
-    fontSize: 13,
-    color: '#64748B',
-    lineHeight: 18,
-    textAlign: 'justify',
-  },
-  countBadge: {
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    minWidth: 24,
-    alignItems: 'center',
-  },
-  countText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  alertBadge: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#3B82F6',
-    borderWidth: 1,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
-  alertBadgeText: {
+  roleBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  positionBadgeBox: {
+    backgroundColor: '#E0E7FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  positionBadgeText: {
+    color: '#1E3A8A',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+    letterSpacing: -0.3,
+  },
+  institutionName: {
+    fontSize: 14,
+    color: '#1D4ED8',
+    fontWeight: '600',
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 12,
+  },
+  statsGrid: {
+    gap: 10,
+    marginBottom: 20,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statContent: {
+    flex: 1,
+  },
+  statLabel: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#334155',
+    lineHeight: 14,
+    marginBottom: 2,
+  },
+  statValue: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  actionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  actionIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionInfo: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  actionDesc: {
+    fontSize: 11.5,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  newReportBadge: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  newReportBadgeText: {
     color: '#1D4ED8',
     fontSize: 11,
     fontWeight: '700',
   },
-  caseCountBadge: {
+  caseBadge: {
     backgroundColor: '#FEF3C7',
-    borderColor: '#F59E0B',
+    borderColor: '#FDE68A',
     borderWidth: 1,
+    borderRadius: 10,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 3,
   },
-  caseCountText: {
+  caseBadgeText: {
     color: '#B45309',
     fontSize: 11,
     fontWeight: '700',
   },
-  chevron: {
-    fontSize: 24,
-    color: '#94A3B8',
-    fontWeight: '300',
+  requestBadge: {
+    backgroundColor: '#F3E8FF',
+    borderColor: '#DDD6FE',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  requestBadgeText: {
+    color: '#7C3AED',
+    fontSize: 11,
+    fontWeight: '700',
   },
   logoutButton: {
-    marginTop: 20,
-    marginBottom: 20,
+    marginTop: 8,
+    borderColor: '#1E3A8A',
+    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+  },
+  logoutButtonText: {
+    color: '#1E3A8A',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

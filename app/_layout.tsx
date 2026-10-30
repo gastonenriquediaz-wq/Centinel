@@ -120,7 +120,7 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="(authority)/index"
-          options={{ title: 'Centinel - Panel de Autoridad', headerShown: true }}
+          options={{ title: 'Centinel', headerShown: true }}
         />
         <Stack.Screen
           name="index"
