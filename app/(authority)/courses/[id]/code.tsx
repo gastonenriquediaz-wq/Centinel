@@ -170,9 +170,6 @@ export default function CourseCodeScreen() {
                     </Text>
                   </TouchableOpacity>
 
-                  <Text style={styles.codeSecurityNote}>
-                    10 caracteres · Excluye caracteres ambiguos (O, I, 0, 1)
-                  </Text>
                 </View>
 
                 {/* Contador de tiempo */}
@@ -182,7 +179,7 @@ export default function CourseCodeScreen() {
                 </View>
 
                 <Text style={styles.instructionText}>
-                  Los estudiantes deben ingresar este código alfanumérico desde Centinel para registrarse en este curso. Reutilizable por múltiples alumnos durante estos 5 minutos.
+                  Los estudiantes deben ingresar este código desde Centinel para registrarse en este curso. Reutilizable por múltiples alumnos durante estos 5 minutos.
                 </Text>
               </>
             )}
