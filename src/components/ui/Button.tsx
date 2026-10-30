@@ -5,6 +5,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   TouchableOpacityProps,
+  StyleProp,
+  TextStyle,
 } from 'react-native';
 
 interface ButtonProps extends TouchableOpacityProps {
@@ -12,6 +14,7 @@ interface ButtonProps extends TouchableOpacityProps {
   loading?: boolean;
   variant?: 'primary' | 'secondary' | 'danger' | 'outline';
   icon?: React.ReactNode;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -19,6 +22,7 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   variant = 'primary',
   icon,
+  textStyle,
   disabled,
   style,
   ...props
@@ -50,6 +54,7 @@ export const Button: React.FC<ButtonProps> = ({
               styles[`${variant}Text`],
               isActionDisabled && styles.disabledText,
               icon ? { marginLeft: 8 } : null,
+              textStyle,
             ]}
           >
             {title}

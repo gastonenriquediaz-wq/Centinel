@@ -1,6 +1,91 @@
 import { supabase } from './supabase';
 import { Course, QRCode, QRValidationResult, ShiftType } from '../types/database.types';
 
+// Alfabeto Base32 de 32 caracteres (Excluye O, I, 0 y 1 para evitar confusiones)
+export const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+/**
+ * Genera un código alfanumérico de 10 caracteres utilizando aleatoriedad criptográficamente segura.
+ */
+export function generateSecureAlphanumericCode(length = 10): string {
+  const bytes = new Uint8Array(length);
+
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    // Fallback para entornos Node/CLI
+    const nodeCrypto = require('crypto');
+    nodeCrypto.getRandomValues(bytes);
+  }
+
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    // 256 es múltiplo exacto de 32, distribución 100% uniforme sin sesgo (3.125% c/u)
+    code += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  }
+  return code;
+}
+
+/**
+ * Verifica si una cadena contiene exclusivamente caracteres válidos del alfabeto de códigos.
+ */
+export function isValidCodeChars(code: string): boolean {
+  for (let i = 0; i < code.length; i++) {
+    if (!CODE_ALPHABET.includes(code[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Convierte de manera biyectiva y determinista un código de 10 caracteres (Base32) a un UUID válido
+ * para almacenamiento y validación atómica en Supabase (campo code_token uuid).
+ */
+export function codeToUUID(rawCode: string): string | null {
+  const clean = rawCode.replace(/[\s-]/g, '').toUpperCase();
+  if (clean.length !== 10 || !isValidCodeChars(clean)) {
+    return null;
+  }
+
+  let num = 0n;
+  for (let i = 0; i < clean.length; i++) {
+    const idx = BigInt(CODE_ALPHABET.indexOf(clean[i]));
+    num = num * 32n + idx;
+  }
+
+  const hex = num.toString(16).padStart(16, '0');
+  // Estructura de UUID estándar (32 caracteres hexadecimales: 8-4-4-4-12)
+  const p1 = 'a1fa' + hex.substring(0, 4);
+  const p2 = hex.substring(4, 8);
+  const p3 = '4000';
+  const p4 = '8000';
+  const p5 = hex.substring(8, 16) + '0000';
+  return `${p1}-${p2}-${p3}-${p4}-${p5}`;
+}
+
+/**
+ * Convierte un UUID generado a partir de un código de 10 caracteres a su forma alfanumérica original.
+ */
+export function uuidToCode(uuid: string): string | null {
+  const clean = uuid.replace(/-/g, '').toLowerCase();
+  if (!clean.startsWith('a1fa') || clean.substring(12, 20) !== '40008000') {
+    return null;
+  }
+
+  const hex = clean.substring(4, 8) + clean.substring(8, 12) + clean.substring(20, 28);
+  let num = BigInt('0x' + hex);
+  const chars: string[] = [];
+
+  for (let i = 0; i < 10; i++) {
+    const rem = num % 32n;
+    chars.unshift(CODE_ALPHABET[Number(rem)]);
+    num = num / 32n;
+  }
+
+  return chars.join('');
+}
+
 export const CoursesService = {
   /**
    * Obtiene todos los cursos de la institución correspondiente.
@@ -96,17 +181,91 @@ export const CoursesService = {
   },
 
   /**
-   * Valida un token QR leído por el estudiante en el backend.
+   * Genera un código alfanumérico seguro de 10 caracteres con vigencia de 5 minutos.
+   * Evita duplicados vigentes y permite que varios estudiantes se registren con él.
    */
-  async validateQRToken(token: string): Promise<QRValidationResult> {
+  async generateCourseCode(params: {
+    courseId: string;
+    institutionId: string;
+    userId: string;
+  }): Promise<{ code: string; qrData: QRCode }> {
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutos exactos
+
+    let code = '';
+    let tokenUUID = '';
+    let isUnique = false;
+
+    // Generar código con aleatoriedad criptosegura garantizando ausencia de duplicados vigentes
+    for (let attempt = 0; attempt < 5; attempt++) {
+      code = generateSecureAlphanumericCode(10);
+      const candidateUUID = codeToUUID(code);
+      if (!candidateUUID) continue;
+
+      tokenUUID = candidateUUID;
+
+      // Verificar que no exista un código idéntico vigente en la base de datos
+      const { data: existing } = await supabase
+        .from('qr_codes')
+        .select('id')
+        .eq('code_token', tokenUUID)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+      if (!existing) {
+        isUnique = true;
+        break;
+      }
+    }
+
+    if (!isUnique) {
+      throw new Error('No se pudo generar un código único en este momento. Reintentá.');
+    }
+
+    const { data, error } = await supabase
+      .from('qr_codes')
+      .insert({
+        course_id: params.courseId,
+        institution_id: params.institutionId,
+        created_by: params.userId,
+        code_token: tokenUUID,
+        expires_at: expiresAt,
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return { code, qrData: data };
+  },
+
+  /**
+   * Valida un token (sea código QR o código alfanumérico) en el backend.
+   */
+  async validateQRToken(token: string): Promise<QRValidationResult & { token_for_registration?: string }> {
+    const trimmed = token.trim();
+    const cleanAlpha = trimmed.replace(/[\s-]/g, '').toUpperCase();
+    let tokenToValidate = trimmed;
+
+    // Si es un código alfanumérico de 10 caracteres del alfabeto permitido, convertir a UUID
+    if (cleanAlpha.length === 10 && isValidCodeChars(cleanAlpha)) {
+      const derivedUUID = codeToUUID(cleanAlpha);
+      if (derivedUUID) {
+        tokenToValidate = derivedUUID;
+      }
+    }
+
     const { data, error } = await supabase.rpc('validate_qr_token', {
-      p_token: token,
+      p_token: tokenToValidate,
     });
 
     if (error) {
       return { valid: false, error: 'No se pudo conectar con el servidor para validar el código.' };
     }
-    return data as QRValidationResult;
+
+    const res = data as QRValidationResult;
+    return { ...res, token_for_registration: tokenToValidate };
   },
 
   /**
@@ -120,9 +279,20 @@ export const CoursesService = {
     dni: string;
     birthDate: string;
   }): Promise<{ success: boolean; error?: string }> {
+    const trimmed = params.token.trim();
+    const cleanAlpha = trimmed.replace(/[\s-]/g, '').toUpperCase();
+    let tokenUUID = trimmed;
+
+    if (cleanAlpha.length === 10 && isValidCodeChars(cleanAlpha)) {
+      const derivedUUID = codeToUUID(cleanAlpha);
+      if (derivedUUID) {
+        tokenUUID = derivedUUID;
+      }
+    }
+
     const { data, error } = await supabase.rpc('complete_student_registration', {
       p_user_id: params.userId,
-      p_token: params.token,
+      p_token: tokenUUID,
       p_first_name: params.firstName,
       p_last_name: params.lastName,
       p_dni: params.dni,

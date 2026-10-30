@@ -149,16 +149,16 @@ export default function AuthorityDashboard() {
         </Card>
       </TouchableOpacity>
 
-      {/* Acceso a Cursos y QR */}
+      {/* Acceso a Cursos y QR / Alfanuméricos */}
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={() => router.push('/(authority)/courses')}
       >
         <Card style={styles.menuCard}>
           <View style={styles.menuInfo}>
-            <Text style={styles.menuTitle}>Cursos y Códigos QR</Text>
+            <Text style={styles.menuTitle}>Cursos y Códigos QR/Alfanuméricos</Text>
             <Text style={styles.menuDesc}>
-              Administrar cursos de la institución y generar códigos QR de 5 minutos para alumnos.
+              Administrar cursos de la institución y generar códigos QR y alfanuméricos de 5 minutos para alumnos.
             </Text>
           </View>
           <Text style={styles.chevron}>›</Text>

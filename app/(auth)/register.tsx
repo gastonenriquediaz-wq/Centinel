@@ -30,6 +30,25 @@ export default function StudentRegisterScreen() {
   const [validating, setValidating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Protección contra ataques de fuerza bruta / adivinación de códigos
+  const [failedAttempts, setFailedAttempts] = useState<number>(0);
+  const [lockoutRemaining, setLockoutRemaining] = useState<number>(0);
+
+  // Temporizador para el desbloqueo tras superar el límite de intentos
+  useEffect(() => {
+    if (lockoutRemaining <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutRemaining]);
+
   // Formulario
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -40,11 +59,19 @@ export default function StudentRegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [registering, setRegistering] = useState(false);
 
-  // Validar token QR
+  // Validar token QR o código alfanumérico con protección contra adivinación
   const handleValidateToken = async (token: string) => {
+    if (lockoutRemaining > 0) {
+      Alert.alert(
+        'Límite de intentos alcanzado',
+        `Por seguridad, debés esperar ${lockoutRemaining} segundos antes de volver a ingresar otro código.`
+      );
+      return;
+    }
+
     const trimmed = token.trim();
     if (!trimmed) {
-      setErrorMessage('Ingresá o escaneá un código QR válido.');
+      setErrorMessage('Ingresá o escaneá un código QR o alfanumérico válido.');
       return;
     }
 
@@ -54,17 +81,48 @@ export default function StudentRegisterScreen() {
 
       const result = await CoursesService.validateQRToken(trimmed);
       if (!result.valid) {
-        setErrorMessage(result.error || 'Código QR no válido o expirado.');
+        const nextFailed = failedAttempts + 1;
         setScanned(false);
+
+        if (nextFailed >= 5) {
+          setFailedAttempts(0);
+          setLockoutRemaining(60);
+          setErrorMessage(
+            'Has superado el límite de 5 intentos erróneos. Por seguridad contra adivinación de códigos, el ingreso se encuentra bloqueado por 60 segundos.'
+          );
+          Alert.alert(
+            'Límite de seguridad alcanzado',
+            'Demasiados intentos fallidos. Por protección de la institución escolar, debés esperar 60 segundos para volver a intentar.'
+          );
+        } else {
+          setFailedAttempts(nextFailed);
+          const remaining = 5 - nextFailed;
+          setErrorMessage(
+            `${result.error || 'Código no válido o expirado.'} (Intentos restantes: ${remaining})`
+          );
+        }
         return;
       }
 
-      setQrToken(trimmed);
+      // Validación exitosa: reiniciar contador de fallos
+      setFailedAttempts(0);
+      setLockoutRemaining(0);
+      setQrToken(result.token_for_registration || trimmed);
       setQrInfo(result);
       setPhase('form');
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error al validar el código QR.');
+      const nextFailed = failedAttempts + 1;
       setScanned(false);
+      if (nextFailed >= 5) {
+        setFailedAttempts(0);
+        setLockoutRemaining(60);
+        setErrorMessage(
+          'Has superado el límite de 5 intentos erróneos. Ingreso bloqueado temporalmente por 60 segundos.'
+        );
+      } else {
+        setFailedAttempts(nextFailed);
+        setErrorMessage(err.message || 'Error al validar el código.');
+      }
     } finally {
       setValidating(false);
     }
@@ -205,20 +263,33 @@ export default function StudentRegisterScreen() {
               </View>
             )}
 
-            {/* Alternativa de ingreso manual (útil para emulador o si falla la cámara) */}
+            {/* Alternativa de ingreso manual (código alfanumérico de 10 caracteres o token QR) */}
             <View style={styles.manualSection}>
-              <Text style={styles.manualLabel}>¿Tenés el código alfanumérico del QR?</Text>
+              <Text style={styles.manualLabel}>¿Tenés el código alfanumérico del curso o del QR?</Text>
               <Input
-                placeholder="Pegá o escribí el código aquí"
+                placeholder="Ej: 7K8M9P2R4X o código QR"
                 value={manualTokenInput}
                 onChangeText={setManualTokenInput}
-                autoCapitalize="none"
+                autoCapitalize="characters"
+                editable={lockoutRemaining === 0}
               />
+              {lockoutRemaining > 0 ? (
+                <View style={styles.lockoutBadge}>
+                  <Text style={styles.lockoutText}>
+                    Bloqueo temporal de seguridad: reintento en {lockoutRemaining}s
+                  </Text>
+                </View>
+              ) : failedAttempts > 0 ? (
+                <Text style={styles.attemptsText}>
+                  Intentos fallidos: {failedAttempts}/5 (máximo 5 antes del bloqueo)
+                </Text>
+              ) : null}
               <Button
-                title="Validar Código Manualmente"
+                title={lockoutRemaining > 0 ? `Bloqueado (${lockoutRemaining}s)` : "Validar Código Manualmente"}
                 variant="secondary"
                 onPress={() => handleValidateToken(manualTokenInput)}
                 loading={validating}
+                disabled={lockoutRemaining > 0}
               />
             </View>
 
@@ -431,6 +502,28 @@ const styles = StyleSheet.create({
     color: '#475569',
     marginBottom: 8,
     textAlign: 'center',
+  },
+  lockoutBadge: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#F87171',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  lockoutText: {
+    color: '#991B1B',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  attemptsText: {
+    color: '#D97706',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
   },
   backButton: {
     marginTop: 8,

@@ -6,7 +6,6 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
-  TouchableOpacity,
 } from 'react-native';
 import { router, useFocusEffect, Stack } from 'expo-router';
 import { Card } from '../../../src/components/ui/Card';
@@ -49,13 +48,19 @@ export default function CoursesListScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Cursos y Códigos QR', headerBackTitle: 'Inicio' }} />
+      <Stack.Screen
+        options={{
+          title: 'Cursos y Códigos QR/Alfanuméricos',
+          headerBackTitle: 'Inicio',
+        }}
+      />
       <View style={styles.headerRow}>
         <Text style={styles.title}>Cursos Institucionales</Text>
         <Button
           title="+ Nuevo Curso"
           onPress={() => router.push('/(authority)/courses/new')}
           style={styles.newButton}
+          textStyle={styles.newButtonText}
         />
       </View>
 
@@ -72,7 +77,7 @@ export default function CoursesListScreen() {
         <Card style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>No hay cursos registrados</Text>
           <Text style={styles.emptySubtitle}>
-            Creá los cursos correspondientes al ciclo lectivo para que los estudiantes puedan incorporarse con códigos QR.
+            Creá los cursos correspondientes al ciclo lectivo para que los estudiantes puedan incorporarse con códigos QR o alfanuméricos.
           </Text>
         </Card>
       ) : (
@@ -81,6 +86,7 @@ export default function CoursesListScreen() {
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <Card style={styles.courseCard}>
               <View style={styles.courseInfo}>
@@ -95,11 +101,21 @@ export default function CoursesListScreen() {
                 </Text>
               </View>
 
-              <Button
-                title="Generar QR"
-                onPress={() => router.push(`/(authority)/courses/${item.id}/qr`)}
-                style={styles.qrButton}
-              />
+              <View style={styles.actionCol}>
+                <Button
+                  title="Generar QR"
+                  onPress={() => router.push(`/(authority)/courses/${item.id}/qr`)}
+                  style={styles.actionBtn}
+                  textStyle={styles.actionBtnText}
+                />
+                <Button
+                  title="Generar código"
+                  variant="outline"
+                  onPress={() => router.push(`/(authority)/courses/${item.id}/code`)}
+                  style={styles.actionBtnOutline}
+                  textStyle={styles.actionBtnOutlineText}
+                />
+              </View>
             </Card>
           )}
         />
@@ -119,15 +135,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingHorizontal: 2,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1E3A8A',
   },
   newButton: {
     paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#1E3A8A',
+  },
+  newButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   centerContainer: {
     flex: 1,
@@ -136,36 +160,72 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 24,
+    gap: 12,
   },
   courseCard: {
-    marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   courseInfo: {
     flex: 1,
     marginRight: 12,
   },
   courseName: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#1E3A8A',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   courseDetails: {
     fontSize: 13,
     color: '#475569',
-    marginBottom: 2,
+    marginBottom: 3,
+    fontWeight: '500',
   },
   courseCap: {
     fontSize: 12,
     color: '#64748B',
   },
-  qrButton: {
+  actionCol: {
+    width: 142,
+    gap: 8,
+  },
+  actionBtn: {
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#1E3A8A',
+  },
+  actionBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  actionBtnOutline: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#1E3A8A',
+  },
+  actionBtnOutlineText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E3A8A',
+    textAlign: 'center',
   },
   emptyCard: {
     padding: 24,
