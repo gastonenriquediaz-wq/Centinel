@@ -1,3 +1,4 @@
+import * as Crypto from 'expo-crypto';
 import { supabase } from './supabase';
 import { Course, QRCode, QRValidationResult, ShiftType } from '../types/database.types';
 
@@ -9,14 +10,7 @@ export const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
  */
 export function generateSecureAlphanumericCode(length = 10): string {
   const bytes = new Uint8Array(length);
-
-  if (typeof globalThis !== 'undefined' && globalThis.crypto?.getRandomValues) {
-    globalThis.crypto.getRandomValues(bytes);
-  } else {
-    // Fallback para entornos Node/CLI
-    const nodeCrypto = require('crypto');
-    nodeCrypto.getRandomValues(bytes);
-  }
+  Crypto.getRandomValues(bytes);
 
   let code = '';
   for (let i = 0; i < length; i++) {
