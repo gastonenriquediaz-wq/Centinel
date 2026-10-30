@@ -146,14 +146,14 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     icon: '💬',
     iconBg: '#FEF9C3',
     intro:
-      'Muchas veces los adolescentes dudan antes de comunicar una situación por temor a equivocarse o a que se considere algo menor. Conocer los momentos oportunos para buscar acompañamiento previene situaciones de mayor gravedad.',
+      'A veces puede resultar difícil contar lo que está pasando por miedo, vergüenza o dudas sobre si es algo importante.\n\nSi una situación te preocupa, te hace sentir mal o afecta tu convivencia con otras personas, podés pedir ayuda. No necesitás esperar a que el problema empeore para hablar con alguien de confianza.',
     sections: [
       {
         subtitle: 'No necesitás tener certezas absolutas para consultar',
-        body: 'No hace falta que estés 100% seguro de si un hecho califica jurídicamente o reglamentariamente como "acoso escolar". Si una situación te provoca malestar reiterado, temor de asistir al colegio, aislamiento o dolor, ya existe un motivo suficiente para dialogar con los adultos.',
+        body: 'No necesitás estar completamente seguro de que lo ocurrido sea acoso escolar para pedir ayuda.\n\nSi una situación te genera miedo, angustia, aislamiento, incomodidad o preocupación, podés hablar con un adulto de confianza o con las autoridades de tu institución.\n\nTambién podés comunicar lo sucedido mediante Centinel para que las autoridades educativas puedan conocer la situación y evaluar cómo proceder.',
       },
       {
-        subtitle: 'Señales de alerta que ameritan intervención temprana',
+        subtitle: 'Señales de que es importante pedir ayuda',
         body: 'Es momento de pedir ayuda ante las siguientes circunstancias:',
         examples: [
           'Sentimiento persistente de angustia o desgano antes de ir al colegio.',
@@ -164,11 +164,11 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
       },
       {
         subtitle: 'Situaciones de urgencia o peligro inminente',
-        body: 'Si existe riesgo físico inmediato, agresión violenta en curso o amenazas a la integridad física o psíquica grave, acudí presencialmente y de forma inmediata al adulto responsable más cercano, o recurrí a los servicios públicos de auxilio correspondientes (como la línea 911 o 102 de Protección a la Niñez y Adolescencia). Centinel es un canal de seguimiento y no sustituye la atención de emergencias en tiempo real.',
+        body: 'Si estás en peligro inmediato, sufrís una agresión física grave o recibís amenazas que ponen en riesgo tu seguridad, buscá un lugar seguro y pedí ayuda inmediatamente a un adulto responsable.\n\nSi necesitás asistencia de emergencia, llamá al 911. También podés comunicarte con la Línea 102 para recibir orientación y acompañamiento sobre situaciones que afectan los derechos de niños y adolescentes.\n\nRecordá que Centinel permite comunicar situaciones a las autoridades educativas, pero no reemplaza los servicios de emergencia ni garantiza una respuesta inmediata.',
       },
     ],
     keyAdvice:
-      'Buscar ayuda a tiempo evita que el conflicto escale. Los adultos de la escuela están para orientar y proteger el espacio compartido.',
+      'Si estás en peligro o sufrís amenazas graves, buscá un lugar seguro y pedí ayuda a un adulto de confianza.\n\nEn caso de emergencia, llamá al 911. También podés comunicarte con la Línea 102 para recibir orientación y acompañamiento.',
   },
   {
     id: 'canales-institucionales-de-ayuda',
