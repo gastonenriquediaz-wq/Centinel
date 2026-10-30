@@ -1,10 +1,35 @@
 import React, { useEffect } from 'react';
+import { Alert, Platform } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/auth.store';
 import { AuthService } from '../src/services/auth.service';
 import { supabase } from '../src/services/supabase';
+
+// Polyfill de Alert.alert para navegadores Web
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  Alert.alert = (title: string, message?: string, buttons?: any[]) => {
+    const fullText = [title, message].filter(Boolean).join('\n\n');
+    if (!buttons || buttons.length === 0) {
+      window.alert(fullText);
+      return;
+    }
+    if (buttons.length === 1) {
+      window.alert(fullText);
+      buttons[0]?.onPress?.();
+      return;
+    }
+    const cancelBtn = buttons.find((b) => b.style === 'cancel');
+    const confirmBtn = buttons.find((b) => b.style !== 'cancel') || buttons[buttons.length - 1];
+    const confirmed = window.confirm(fullText);
+    if (confirmed) {
+      confirmBtn?.onPress?.();
+    } else {
+      cancelBtn?.onPress?.();
+    }
+  };
+}
 
 export default function RootLayout() {
   const { setSession, setProfile, setLoading, reset, profile } = useAuthStore();
