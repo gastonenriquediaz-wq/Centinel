@@ -204,15 +204,15 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
     icon: '🤝',
     iconBg: '#EEF2FF',
     intro:
-      'Una comunidad educativa saludable se construye con pequeñas actitudes cotidianas de reconocimiento hacia los demás, aceptando las diversidades como parte natural de la vida comunitaria.',
+      'Una buena convivencia escolar se construye con pequeñas acciones de todos los días: tratar bien a los demás, escuchar, respetar las diferencias e incluir a quienes nos rodean.\n\nCada estudiante puede contribuir a que la escuela sea un lugar donde todos se sientan respetados y acompañados.',
     sections: [
       {
         subtitle: 'Empatía y valoración de las diferencias',
-        body: 'Cada persona tiene gustos, ritmos de aprendizaje, formas de expresarse y realidades familiares distintas. El respeto no exige que todos pensemos o seamos iguales, sino que reconozcamos el valor de la dignidad de cada compañero.',
+        body: 'Cada persona tiene gustos, formas de aprender, opiniones y experiencias diferentes.\n\nRespetar a los demás no significa que todos debamos pensar igual, sino reconocer que cada compañero merece ser tratado con dignidad, sin burlas, discriminación ni exclusión.',
       },
       {
         subtitle: 'Convivencia responsable en el entorno presencial y digital',
-        body: 'Algunas prácticas positivas recomendadas por programas de convivencia escolar incluyen:',
+        body: 'Podés contribuir a una mejor convivencia, tanto en la escuela como en Internet, mediante estas acciones:',
         recommendations: [
           'Integrar a quienes están solos o son nuevos en el curso.',
           'Expresar desacuerdos de forma constructiva, sin recurrir a la burla pública ni al desprecio.',
@@ -222,6 +222,6 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
       },
     ],
     keyAdvice:
-      'La convivencia armónica no significa ausencia de diferencias, sino la capacidad de resolverlas con diálogo, escucha activa y empatía.',
+      'Convivir no significa estar siempre de acuerdo, sino aprender a respetarnos, escucharnos y resolver nuestras diferencias mediante el diálogo. Tus acciones también ayudan a construir una escuela donde todos puedan sentirse incluidos y seguros.',
   },
 ];
