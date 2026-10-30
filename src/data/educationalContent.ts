@@ -172,30 +172,30 @@ export const EDUCATIONAL_TOPICS: EducationalTopic[] = [
   },
   {
     id: 'canales-institucionales-de-ayuda',
-    title: 'Canales institucionales de ayuda',
+    title: 'Canales de ayuda',
     shortDescription:
       'Cómo solicitar apoyo del director o vicedirector y utilizar Centinel para comunicar situaciones.',
     icon: '🏫',
     iconBg: '#ECFDF5',
     intro:
-      'Las escuelas cuentan con responsabilidades y procedimientos establecidos para resguardar a sus estudiantes. Conocer cómo funciona Centinel y cuáles son sus alcances te permite utilizarlo de manera informada y responsable.',
+      'Tu escuela cuenta con autoridades y procedimientos para atender situaciones que afectan la convivencia escolar.\n\nConocer cómo funciona Centinel y a quién podés acudir te ayudará a comunicar lo que sucede y solicitar acompañamiento cuando lo necesites.',
     sections: [
       {
         subtitle: 'El rol de los directivos escolares',
-        body: 'El Director y el Vicedirector de tu institución educativa son las autoridades legalmente facultadas para intervenir, coordinar con docentes, citar a las familias, labrar actas de actuación y articular con equipos interdisciplinarios cuando sea necesario.',
+        body: 'El director y el vicedirector son las autoridades educativas que reciben y gestionan los reportes enviados mediante Centinel.\n\nSegún la situación y los procedimientos de cada institución, pueden coordinar acciones con docentes, familias y equipos de orientación para evaluar lo ocurrido y brindar el acompañamiento correspondiente.',
       },
       {
         subtitle: 'Cómo funciona Centinel dentro de tu colegio',
         body: 'Centinel brinda un medio seguro para hacer llegar información a esas autoridades:',
         recommendations: [
-          'Confidencial frente a compañeros: Ningún otro estudiante puede ver tus reportes, descripciones, evidencias o mensajes.',
-          'No es anónimo: Para garantizar la seriedad de la comunicación y permitir que las autoridades puedan protegerte y dar seguimiento adecuado, los directivos conocen la identidad de quien reporta.',
-          'Canal complementario: La aplicación facilita la comunicación escrita inicial y el registro de evidencias, pero complementa —y no sustituye— las reuniones presenciales, las instancias de escucha personal y las normativas institucionales.',
+          'Confidencial frente a compañeros: Otros estudiantes no pueden acceder a tus reportes, mensajes, archivos adjuntos ni datos personales a través de Centinel.',
+          'No es anónimo: Cuando enviás un reporte, el director y el vicedirector autorizados de tu institución pueden conocer tu identidad para evaluar la situación y realizar su seguimiento.',
+          'Canal complementario: Centinel permite comunicar situaciones, adjuntar información y mantener conversaciones con las autoridades educativas. Sin embargo, no reemplaza las reuniones presenciales, la atención personal ni los procedimientos de tu institución.',
         ],
       },
     ],
     keyAdvice:
-      'Centinel es una herramienta institucional para cuidarte. Usala con responsabilidad, veracidad y compromiso con el bienestar de toda la comunidad escolar.',
+      'Centinel es un espacio para comunicar situaciones que te preocupan y solicitar acompañamiento.\n\nUtilizalo con responsabilidad y contá lo sucedido de la manera más clara y sincera posible. No necesitás tener todas las respuestas para pedir ayuda.',
   },
   {
     id: 'convivencia-y-respeto',
