@@ -967,11 +967,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 6,
+    textAlign: 'justify',
   },
   helperTextNotice: {
     fontSize: 13,
     color: '#64748B',
     marginBottom: 12,
+    textAlign: 'justify',
   },
   dynamicListContainer: {
     marginTop: 10,
@@ -1042,6 +1044,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginBottom: 16,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   mediaButtonsRow: {
     flexDirection: 'row',
@@ -1129,6 +1132,7 @@ const styles = StyleSheet.create({
     color: '#334155',
     marginBottom: 6,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   bold: {
     fontWeight: '700',
@@ -1150,12 +1154,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 18,
     marginBottom: 8,
+    textAlign: 'justify',
   },
   alertSubtext: {
     fontSize: 12,
     color: '#B91C1C',
     lineHeight: 16,
     marginBottom: 16,
+    textAlign: 'justify',
   },
   checkboxContainer: {
     flexDirection: 'row',
@@ -1186,6 +1192,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#7F1D1D',
     lineHeight: 16,
+    textAlign: 'justify',
   },
   submittingContainer: {
     flexDirection: 'row',

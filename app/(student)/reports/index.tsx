@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: '#64748B',
-    textAlign: 'center',
+    textAlign: 'justify',
     lineHeight: 20,
     marginBottom: 20,
   },

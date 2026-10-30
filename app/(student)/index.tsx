@@ -244,6 +244,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   actionButtons: {
     gap: 10,
@@ -271,6 +272,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   urgentNoticeBox: {
     backgroundColor: '#FEE2E2',
@@ -283,6 +285,7 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     lineHeight: 16,
     fontWeight: '500',
+    textAlign: 'justify',
   },
   logoutButton: {
     marginTop: 'auto',

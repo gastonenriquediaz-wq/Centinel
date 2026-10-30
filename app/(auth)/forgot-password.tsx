@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     color: '#64748B',
-    textAlign: 'center',
+    textAlign: 'justify',
     marginBottom: 20,
     lineHeight: 20,
   },
@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#991B1B',
     fontSize: 13,
+    textAlign: 'justify',
   },
   successBox: {
     backgroundColor: '#ECFDF5',
@@ -163,6 +164,6 @@ const styles = StyleSheet.create({
     color: '#047857',
     fontSize: 13,
     lineHeight: 18,
-    textAlign: 'center',
+    textAlign: 'justify',
   },
 });

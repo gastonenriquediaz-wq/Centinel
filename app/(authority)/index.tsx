@@ -267,6 +267,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     lineHeight: 18,
+    textAlign: 'justify',
   },
   countBadge: {
     backgroundColor: '#EF4444',

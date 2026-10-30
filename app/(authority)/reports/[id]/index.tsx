@@ -498,6 +498,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#D97706',
     fontWeight: '500',
+    textAlign: 'justify',
   },
   closeNoCaseBtn: {
     marginTop: 4,
@@ -522,6 +523,7 @@ const styles = StyleSheet.create({
     color: '#475569',
     marginTop: 4,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   card: {
     padding: 16,
@@ -570,6 +572,7 @@ const styles = StyleSheet.create({
     color: '#334155',
     lineHeight: 22,
     marginTop: 4,
+    textAlign: 'justify',
   },
   attachmentsGrid: {
     flexDirection: 'row',
@@ -643,6 +646,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     lineHeight: 18,
+    textAlign: 'justify',
   },
   modalButtonsRow: {
     flexDirection: 'row',

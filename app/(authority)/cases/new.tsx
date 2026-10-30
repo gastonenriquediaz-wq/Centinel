@@ -184,6 +184,7 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     marginBottom: 4,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   bold: {
     fontWeight: '700',

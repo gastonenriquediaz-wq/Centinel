@@ -178,6 +178,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginBottom: 16,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   centerContainer: {
     flex: 1,
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 13,
     color: '#64748B',
-    textAlign: 'center',
+    textAlign: 'justify',
     lineHeight: 18,
   },
   errorCard: {

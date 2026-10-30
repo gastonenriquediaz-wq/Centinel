@@ -234,6 +234,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
     lineHeight: 16,
+    textAlign: 'justify',
   },
   spacing: {
     marginTop: 12,
@@ -243,6 +244,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 8,
     lineHeight: 16,
+    textAlign: 'justify',
   },
   submitBtn: {
     marginTop: 16,

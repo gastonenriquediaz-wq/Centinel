@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     color: '#64748B',
-    textAlign: 'center',
+    textAlign: 'justify',
     marginBottom: 16,
     lineHeight: 18,
   },
@@ -474,6 +474,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginBottom: 16,
     lineHeight: 16,
+    textAlign: 'justify',
   },
   submitButton: {
     marginTop: 10,
@@ -493,6 +494,7 @@ const styles = StyleSheet.create({
     color: '#991B1B',
     fontSize: 13,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   successIconBox: {
     width: 64,
@@ -519,7 +521,7 @@ const styles = StyleSheet.create({
   successBody: {
     fontSize: 14,
     color: '#475569',
-    textAlign: 'center',
+    textAlign: 'justify',
     lineHeight: 20,
     marginBottom: 20,
   },
@@ -541,6 +543,7 @@ const styles = StyleSheet.create({
     color: '#B45309',
     fontSize: 13,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   backToLoginBtn: {
     width: '100%',

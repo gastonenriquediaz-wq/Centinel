@@ -253,5 +253,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#991B1B',
     fontSize: 13,
+    textAlign: 'justify',
   },
 });

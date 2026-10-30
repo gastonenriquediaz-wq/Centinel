@@ -594,6 +594,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     lineHeight: 18,
     marginBottom: 14,
+    textAlign: 'justify',
   },
   datesContainer: {
     gap: 12,
@@ -778,6 +779,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#334155',
     lineHeight: 20,
+    textAlign: 'justify',
   },
   attachmentsListContainer: {
     gap: 12,
@@ -902,6 +904,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     lineHeight: 16,
+    textAlign: 'justify',
   },
   immutableNoticeBox: {
     backgroundColor: '#EFF6FF',
@@ -924,6 +927,7 @@ const styles = StyleSheet.create({
     color: '#475569',
     lineHeight: 17,
     flex: 1,
+    textAlign: 'justify',
   },
   fullscreenOverlay: {
     flex: 1,

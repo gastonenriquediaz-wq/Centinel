@@ -151,6 +151,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#334155',
     lineHeight: 22,
+    textAlign: 'justify',
   },
   sectionCard: {
     padding: 16,
@@ -166,6 +167,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#334155',
     lineHeight: 21,
+    textAlign: 'justify',
   },
   listContainer: {
     marginTop: 12,
@@ -200,6 +202,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1E293B',
     lineHeight: 20,
+    textAlign: 'justify',
   },
   keyAdviceCard: {
     padding: 16,
@@ -217,6 +220,7 @@ const styles = StyleSheet.create({
     color: '#713F12',
     lineHeight: 19,
     fontStyle: 'italic',
+    textAlign: 'justify',
   },
   bottomBackButton: {
     marginTop: 8,

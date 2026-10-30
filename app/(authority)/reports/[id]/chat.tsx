@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   emptyMessagesText: {
     fontSize: 13,
     color: '#64748B',
-    textAlign: 'center',
+    textAlign: 'justify',
     lineHeight: 18,
   },
   messageRow: {
@@ -361,6 +361,7 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 14,
     lineHeight: 20,
+    textAlign: 'justify',
   },
   messageTextMe: {
     color: '#FFFFFF',

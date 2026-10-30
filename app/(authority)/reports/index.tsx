@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 13,
     color: '#64748B',
-    textAlign: 'center',
+    textAlign: 'justify',
     lineHeight: 18,
   },
 });

@@ -83,6 +83,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   listContent: {
     padding: 16,
@@ -124,5 +125,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     lineHeight: 16,
+    textAlign: 'justify',
   },
 });

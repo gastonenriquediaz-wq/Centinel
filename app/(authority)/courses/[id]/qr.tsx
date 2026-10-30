@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   instructionText: {
     fontSize: 12,
     color: '#64748B',
-    textAlign: 'center',
+    textAlign: 'justify',
     lineHeight: 18,
     marginBottom: 20,
     paddingHorizontal: 10,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   expiredSub: {
     fontSize: 13,
     color: '#78350F',
-    textAlign: 'center',
+    textAlign: 'justify',
     lineHeight: 18,
     marginBottom: 16,
   },

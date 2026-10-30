@@ -280,6 +280,7 @@ const styles = StyleSheet.create({
     color: '#991B1B',
     fontSize: 14,
     lineHeight: 20,
+    textAlign: 'justify',
   },
   alertBoxWarning: {
     backgroundColor: '#FFFBEB',
@@ -299,6 +300,7 @@ const styles = StyleSheet.create({
     color: '#B45309',
     fontSize: 13,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   footerNotice: {
     marginTop: 20,

@@ -374,6 +374,7 @@ const styles = StyleSheet.create({
     color: '#14532D',
     marginTop: 4,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   card: {
     padding: 16,
@@ -389,6 +390,7 @@ const styles = StyleSheet.create({
     color: '#334155',
     marginBottom: 4,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   bold: {
     fontWeight: '700',
@@ -411,6 +413,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     lineHeight: 18,
+    textAlign: 'justify',
   },
   actsList: {
     gap: 12,
@@ -457,6 +460,7 @@ const styles = StyleSheet.create({
     color: '#334155',
     lineHeight: 18,
     marginBottom: 8,
+    textAlign: 'justify',
   },
   actAuthor: {
     fontSize: 11,
@@ -482,6 +486,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     lineHeight: 18,
+    textAlign: 'justify',
   },
   modalButtonsRow: {
     flexDirection: 'row',
