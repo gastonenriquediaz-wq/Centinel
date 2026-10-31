@@ -123,6 +123,40 @@ export const MessagesService = {
   },
 
   /**
+   * Obtiene estadísticas de chat (total de mensajes y mensajes no leídos del estudiante)
+   * agrupados por report_id para los reportes de la institución
+   */
+  async getReportsChatStats(): Promise<{
+    unreadCounts: Record<string, number>;
+    totalCounts: Record<string, number>;
+  }> {
+    try {
+      const { data: messages, error } = await supabase
+        .from('report_messages')
+        .select('id, report_id, sender_role, read_at');
+
+      if (error || !messages) {
+        return { unreadCounts: {}, totalCounts: {} };
+      }
+
+      const unreadCounts: Record<string, number> = {};
+      const totalCounts: Record<string, number> = {};
+
+      for (const msg of messages) {
+        if (!msg.report_id) continue;
+        totalCounts[msg.report_id] = (totalCounts[msg.report_id] || 0) + 1;
+        if (msg.sender_role === 'student' && !msg.read_at) {
+          unreadCounts[msg.report_id] = (unreadCounts[msg.report_id] || 0) + 1;
+        }
+      }
+
+      return { unreadCounts, totalCounts };
+    } catch {
+      return { unreadCounts: {}, totalCounts: {} };
+    }
+  },
+
+  /**
    * Suscripción en tiempo real a nuevos mensajes del reporte
    */
   subscribeToMessages(

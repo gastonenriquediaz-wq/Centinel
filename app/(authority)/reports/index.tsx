@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,13 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { ReportsService } from '../../../src/services/reports.service';
+import { MessagesService } from '../../../src/services/messages.service';
 import { useReportsStore } from '../../../src/store/reports.store';
 import { Report, ReportStatus } from '../../../src/types/database.types';
 
@@ -32,6 +33,10 @@ const FILTER_TABS: { label: string; value: FilterType }[] = [
 export default function AuthorityReportsList() {
   const { profile } = useAuthStore();
   const [reports, setReports] = useState<Report[]>([]);
+  const [chatStats, setChatStats] = useState<{
+    unreadCounts: Record<string, number>;
+    totalCounts: Record<string, number>;
+  }>({ unreadCounts: {}, totalCounts: {} });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -57,10 +62,11 @@ export default function AuthorityReportsList() {
   const loadReports = async () => {
     if (!profile?.institution_id) return;
     try {
-      // Cargamos reportes y auditoría de lecturas en paralelo
-      const [reportsRes, openedIds] = await Promise.all([
+      // Cargamos reportes, auditoría de lecturas y estadísticas de chat en paralelo
+      const [reportsRes, openedIds, chatStatsRes] = await Promise.all([
         ReportsService.getInstitutionReports(profile.institution_id),
         ReportsService.getOpenedReportIds(profile.institution_id),
+        MessagesService.getReportsChatStats(),
       ]);
       if (openedIds && openedIds.size > 0) {
         useReportsStore.getState().setOpenedReportIds(openedIds);
@@ -68,16 +74,20 @@ export default function AuthorityReportsList() {
       if (!reportsRes.error && reportsRes.data) {
         setReports(reportsRes.data);
       }
+      if (chatStatsRes) {
+        setChatStats(chatStatsRes);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    setLoading(true);
-    loadReports();
-  }, [profile?.institution_id]);
+  useFocusEffect(
+    useCallback(() => {
+      loadReports();
+    }, [profile?.institution_id])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -295,17 +305,34 @@ export default function AuthorityReportsList() {
           const badge = getStatusBadge(item.status);
           const isUnopened = !openedReportIds.has(item.id) && item.status === 'sent';
           const attachmentCount = item.attachments?.length || 0;
+          const unreadMsgs = chatStats.unreadCounts[item.id] || 0;
+          const totalMsgs = chatStats.totalCounts[item.id] || 0;
 
           return (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => handleOpenReport(item.id)}
-            >
-              <Card style={styles.reportCard}>
-                {/* Insignia "Sin abrir" cuando corresponde */}
-                {isUnopened && (
-                  <View style={styles.unopenedBadge}>
-                    <Text style={styles.unopenedBadgeText}>Sin abrir</Text>
+            <Card style={styles.reportCard}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleOpenReport(item.id)}
+              >
+                {/* Fila de insignias superiores */}
+                {(isUnopened || unreadMsgs > 0) && (
+                  <View style={styles.badgesTopRow}>
+                    {isUnopened && (
+                      <View style={styles.unopenedBadge}>
+                        <Text style={styles.unopenedBadgeText}>Sin abrir</Text>
+                      </View>
+                    )}
+                    {unreadMsgs > 0 && (
+                      <View style={styles.chatAlertTopBadge}>
+                        <Ionicons
+                          name="chatbubble-ellipses"
+                          size={11}
+                          color="#1D4ED8"
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text style={styles.chatAlertTopBadgeText}>Chat pendiente</Text>
+                      </View>
+                    )}
                   </View>
                 )}
 
@@ -376,8 +403,61 @@ export default function AuthorityReportsList() {
                   </View>
                   <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
                 </View>
-              </Card>
-            </TouchableOpacity>
+              </TouchableOpacity>
+
+              {/* Barra de Chat (debajo de adjuntos) */}
+              <TouchableOpacity
+                style={[
+                  styles.chatBar,
+                  unreadMsgs > 0 && styles.chatBarWithUnread,
+                ]}
+                onPress={() => router.push(`/(authority)/reports/${item.id}/chat` as any)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.chatBarLeft}>
+                  <Ionicons
+                    name={unreadMsgs > 0 ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
+                    size={16}
+                    color={unreadMsgs > 0 ? '#1D4ED8' : '#2563EB'}
+                  />
+                  <Text
+                    style={[
+                      styles.chatBarText,
+                      unreadMsgs > 0 && styles.chatBarTextWithUnread,
+                    ]}
+                  >
+                    Chat
+                  </Text>
+                  {totalMsgs > 0 && (
+                    <Text
+                      style={[
+                        styles.chatBarSubText,
+                        unreadMsgs > 0 && styles.chatBarSubTextWithUnread,
+                      ]}
+                    >
+                      ({totalMsgs} {totalMsgs === 1 ? 'mensaje' : 'mensajes'})
+                    </Text>
+                  )}
+                </View>
+
+                {unreadMsgs > 0 ? (
+                  <View style={styles.chatUnreadPill}>
+                    <View style={styles.chatUnreadDot} />
+                    <Text style={styles.chatUnreadPillText}>
+                      {unreadMsgs === 1 ? '1 nuevo mensaje' : `${unreadMsgs} nuevos`}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={13} color="#1D4ED8" />
+                  </View>
+                ) : (
+                  <View style={styles.chatNormalRight}>
+                    {totalMsgs === 0 && (
+                      <Text style={styles.chatEmptySubText}>Sin mensajes</Text>
+                    )}
+                    <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            </Card>
           );
         }}
       />
@@ -492,9 +572,29 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    marginBottom: 6,
   },
   unopenedBadgeText: {
+    color: '#1D4ED8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  badgesTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  chatAlertTopBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  chatAlertTopBadgeText: {
     color: '#1D4ED8',
     fontSize: 11,
     fontWeight: '700',
@@ -584,6 +684,73 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#334155',
+  },
+  chatBar: {
+    marginTop: 8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  chatBarWithUnread: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  chatBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  chatBarText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  chatBarTextWithUnread: {
+    fontWeight: '700',
+    color: '#1D4ED8',
+  },
+  chatBarSubText: {
+    fontSize: 11.5,
+    color: '#64748B',
+  },
+  chatBarSubTextWithUnread: {
+    color: '#2563EB',
+    fontWeight: '600',
+  },
+  chatUnreadPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DBEAFE',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    gap: 4,
+  },
+  chatUnreadDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#1D4ED8',
+  },
+  chatUnreadPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1D4ED8',
+  },
+  chatNormalRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  chatEmptySubText: {
+    fontSize: 11.5,
+    color: '#94A3B8',
   },
   centerContainer: {
     paddingVertical: 40,

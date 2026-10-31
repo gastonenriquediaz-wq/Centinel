@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useLocalSearchParams, router, Stack, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../../src/components/ui/Card';
@@ -19,6 +19,7 @@ import { Button } from '../../../../src/components/ui/Button';
 import { Input } from '../../../../src/components/ui/Input';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { ReportsService } from '../../../../src/services/reports.service';
+import { MessagesService } from '../../../../src/services/messages.service';
 import { useReportsStore } from '../../../../src/store/reports.store';
 import { Report, ReportStatus } from '../../../../src/types/database.types';
 
@@ -27,6 +28,7 @@ export default function AuthorityReportDetailScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();
   const [report, setReport] = useState<Report | null>(null);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
@@ -36,27 +38,33 @@ export default function AuthorityReportDetailScreen() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isFirstOpenedNow, setIsFirstOpenedNow] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      loadReport();
-    }
-  }, [id]);
-
   const loadReport = async () => {
     try {
-      const { data, error } = await ReportsService.getReportDetails(id as string);
-      if (!error && data) {
-        setReport(data);
+      const [reportRes, unreadCount] = await Promise.all([
+        ReportsService.getReportDetails(id as string),
+        profile?.id ? MessagesService.getUnreadCount(id as string, profile.id) : 0,
+      ]);
+      if (!reportRes.error && reportRes.data) {
+        setReport(reportRes.data);
         // Marcar inmediatamente en el store global como abierto/leído
-        useReportsStore.getState().markReportAsOpened(data.id);
+        useReportsStore.getState().markReportAsOpened(reportRes.data.id);
         // Registrar primera lectura en el audit log (Requisito I-02)
-        const isFirst = await ReportsService.logFirstOpened(data.id);
+        const isFirst = await ReportsService.logFirstOpened(reportRes.data.id);
         setIsFirstOpenedNow(isFirst);
       }
+      setUnreadMessagesCount(unreadCount);
     } finally {
       setLoading(false);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (id) {
+        loadReport();
+      }
+    }, [id, profile?.id])
+  );
 
   const getStatusBadge = (status: ReportStatus) => {
     switch (status) {
@@ -306,6 +314,13 @@ export default function AuthorityReportDetailScreen() {
               style={{ marginRight: 8 }}
             />
             <Text style={styles.chatPrimaryBtnText}>Mensajes con el estudiante</Text>
+            {unreadMessagesCount > 0 && (
+              <View style={styles.chatBtnBadge}>
+                <Text style={styles.chatBtnBadgeText}>
+                  {unreadMessagesCount} {unreadMessagesCount === 1 ? 'nuevo' : 'nuevos'}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           {/* Botones de acción según el estado */}
@@ -662,6 +677,18 @@ const styles = StyleSheet.create({
   chatPrimaryBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '700',
+  },
+  chatBtnBadge: {
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  chatBtnBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '700',
   },
   actionsRow: {
