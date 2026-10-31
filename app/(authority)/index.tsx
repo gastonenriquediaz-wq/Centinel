@@ -8,6 +8,7 @@ import { useAuthStore } from '../../src/store/auth.store';
 import { AuthService } from '../../src/services/auth.service';
 import { StudentsService } from '../../src/services/students.service';
 import { ReportsService } from '../../src/services/reports.service';
+import { useReportsStore } from '../../src/store/reports.store';
 import { CasesService } from '../../src/services/cases.service';
 
 export default function AuthorityDashboard() {
@@ -25,13 +26,30 @@ export default function AuthorityDashboard() {
       const requests = await StudentsService.getPendingRequests(profile.institution_id);
       setPendingRequestsCount(requests.length);
 
-      // 2. Reportes: nuevos ('sent') y en atención ('in_progress')
-      const { data: allReports } = await ReportsService.getInstitutionReports(
-        profile.institution_id
-      );
-      if (allReports) {
-        setSentReportsCount(allReports.filter((r) => r.status === 'sent').length);
-        setInProgressReportsCount(allReports.filter((r) => r.status === 'in_progress').length);
+      // 2. Reportes: identificar cuáles ya fueron abiertos/inspeccionados
+      const [reportsResult, openedIds] = await Promise.all([
+        ReportsService.getInstitutionReports(profile.institution_id),
+        ReportsService.getOpenedReportIds(profile.institution_id),
+      ]);
+
+      if (openedIds && openedIds.size > 0) {
+        useReportsStore.getState().setOpenedReportIds(openedIds);
+      }
+      const allOpened = useReportsStore.getState().openedReportIds;
+
+      if (reportsResult.data) {
+        const allReports = reportsResult.data;
+        // Un reporte es nuevo si está en 'sent' Y NO ha sido abierto aún
+        const newUnopenedReports = allReports.filter(
+          (r) => r.status === 'sent' && !allOpened.has(r.id)
+        );
+        // En atención son los que están en 'in_progress' o en 'sent' que ya fueron inspeccionados/abiertos
+        const inAttentionReports = allReports.filter(
+          (r) => r.status === 'in_progress' || (r.status === 'sent' && allOpened.has(r.id))
+        );
+
+        setSentReportsCount(newUnopenedReports.length);
+        setInProgressReportsCount(inAttentionReports.length);
       }
 
       // 3. Casos activos ('open' o 'under_investigation')
@@ -244,11 +262,6 @@ export default function AuthorityDashboard() {
               Administrar casos institucionales, actuaciones y estados de seguimiento.
             </Text>
           </View>
-          {activeCasesCount > 0 && (
-            <View style={styles.caseBadge}>
-              <Text style={styles.caseBadgeText}>{activeCasesCount} abierto{activeCasesCount > 1 ? 's' : ''}</Text>
-            </View>
-          )}
           <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
         </TouchableOpacity>
 

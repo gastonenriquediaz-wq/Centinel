@@ -356,4 +356,26 @@ export const ReportsService = {
       return false;
     }
   },
+
+  /**
+   * Obtiene los IDs de los reportes que ya fueron abiertos e inspeccionados por autoridades
+   */
+  async getOpenedReportIds(institutionId: string): Promise<Set<string>> {
+    try {
+      const { data, error } = await supabase
+        .from('audit_log')
+        .select('entity_id')
+        .eq('institution_id', institutionId)
+        .eq('entity_type', 'report')
+        .eq('action', 'first_opened');
+
+      if (error || !data) {
+        return new Set();
+      }
+
+      return new Set(data.map((item: any) => item.entity_id as string));
+    } catch {
+      return new Set();
+    }
+  },
 };

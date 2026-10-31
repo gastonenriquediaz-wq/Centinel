@@ -16,6 +16,7 @@ import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { ReportsService } from '../../../src/services/reports.service';
+import { useReportsStore } from '../../../src/store/reports.store';
 import { Report, ReportStatus } from '../../../src/types/database.types';
 
 type FilterType = 'all' | 'sent' | 'in_progress' | 'closed_no_case' | 'finalized';
@@ -39,16 +40,21 @@ export default function AuthorityReportsList() {
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
   const [sortAscending, setSortAscending] = useState(false); // false = más recientes primero
 
-  // Conjunto de reportes leídos/abiertos durante la sesión
-  const [openedReportIds, setOpenedReportIds] = useState<Set<string>>(new Set());
+  const openedReportIds = useReportsStore((state) => state.openedReportIds);
 
   const loadReports = async () => {
     if (!profile?.institution_id) return;
     try {
-      // Cargamos todos los reportes de la institución para permitir filtrado reactivo rápido en cliente
-      const { data, error } = await ReportsService.getInstitutionReports(profile.institution_id);
-      if (!error && data) {
-        setReports(data);
+      // Cargamos reportes y auditoría de lecturas en paralelo
+      const [reportsRes, openedIds] = await Promise.all([
+        ReportsService.getInstitutionReports(profile.institution_id),
+        ReportsService.getOpenedReportIds(profile.institution_id),
+      ]);
+      if (openedIds && openedIds.size > 0) {
+        useReportsStore.getState().setOpenedReportIds(openedIds);
+      }
+      if (!reportsRes.error && reportsRes.data) {
+        setReports(reportsRes.data);
       }
     } finally {
       setLoading(false);
@@ -139,11 +145,7 @@ export default function AuthorityReportsList() {
   }, [reports, selectedFilter, searchQuery, sortAscending]);
 
   const handleOpenReport = (reportId: string) => {
-    setOpenedReportIds((prev) => {
-      const updated = new Set(prev);
-      updated.add(reportId);
-      return updated;
-    });
+    useReportsStore.getState().markReportAsOpened(reportId);
     router.push(`/(authority)/reports/${reportId}` as any);
   };
 

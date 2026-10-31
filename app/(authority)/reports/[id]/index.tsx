@@ -19,6 +19,7 @@ import { Button } from '../../../../src/components/ui/Button';
 import { Input } from '../../../../src/components/ui/Input';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { ReportsService } from '../../../../src/services/reports.service';
+import { useReportsStore } from '../../../../src/store/reports.store';
 import { Report, ReportStatus } from '../../../../src/types/database.types';
 
 export default function AuthorityReportDetailScreen() {
@@ -46,6 +47,8 @@ export default function AuthorityReportDetailScreen() {
       const { data, error } = await ReportsService.getReportDetails(id as string);
       if (!error && data) {
         setReport(data);
+        // Marcar inmediatamente en el store global como abierto/leído
+        useReportsStore.getState().markReportAsOpened(data.id);
         // Registrar primera lectura en el audit log (Requisito I-02)
         const isFirst = await ReportsService.logFirstOpened(data.id);
         setIsFirstOpenedNow(isFirst);
