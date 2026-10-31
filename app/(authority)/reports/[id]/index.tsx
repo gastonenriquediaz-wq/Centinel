@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
 import { Input } from '../../../../src/components/ui/Input';
@@ -55,38 +56,74 @@ export default function AuthorityReportDetailScreen() {
   const getStatusBadge = (status: ReportStatus) => {
     switch (status) {
       case 'sent':
-        return { label: 'Enviado', bg: '#EFF6FF', text: '#2563EB' };
+        return { label: 'Enviado', bg: '#EFF6FF', border: '#BFDBFE', text: '#1D4ED8' };
       case 'in_progress':
-        return { label: 'En seguimiento', bg: '#FEF3C7', text: '#D97706' };
+        return { label: 'En seguimiento', bg: '#FEF3C7', border: '#FDE68A', text: '#B45309' };
       case 'closed_no_case':
-        return { label: 'Cerrado sin apertura', bg: '#F1F5F9', text: '#475569' };
+        return { label: 'Cerrado sin apertura', bg: '#F1F5F9', border: '#CBD5E1', text: '#475569' };
       case 'finalized':
-        return { label: 'Finalizado', bg: '#DCFCE7', text: '#16A34A' };
+        return { label: 'Finalizado', bg: '#DCFCE7', border: '#BBF7D0', text: '#15803D' };
       default:
-        return { label: status, bg: '#F1F5F9', text: '#475569' };
+        return { label: status, bg: '#F1F5F9', border: '#CBD5E1', text: '#475569' };
     }
   };
 
-  const formatDate = (dateStr: string) => {
+  // Formato: "Enviado el 29 de octubre de 2026 · 5:35 p. m."
+  const formatSentDate = (dateStr: string) => {
     try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('es-AR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      const d = new Date(dateStr);
+      const day = d.getDate();
+      const months = [
+        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+      ];
+      const month = months[d.getMonth()] || 'octubre';
+      const year = d.getFullYear();
+      let hours = d.getHours();
+      const minutes = d.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+      hours = hours % 12 || 12;
+      return `Enviado el ${day} de ${month} de ${year} · ${hours}:${minutes} ${ampm}`;
     } catch {
       return dateStr;
     }
+  };
+
+  // Formato: "28 de octubre de 2026, 9:00 p. m."
+  const formatOccurredDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      const day = d.getDate();
+      const months = [
+        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+      ];
+      const month = months[d.getMonth()] || 'octubre';
+      const year = d.getFullYear();
+      let hours = d.getHours();
+      const minutes = d.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+      hours = hours % 12 || 12;
+      return `${day} de ${month} de ${year}, ${hours}:${minutes} ${ampm}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return '0 MB';
+    const mb = bytes / (1024 * 1024);
+    if (mb < 0.01) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+    return `${mb.toFixed(2)} MB`;
   };
 
   const handleSetInProgress = async () => {
     if (!report || !profile) return;
     Alert.alert(
       'Poner en Seguimiento',
-      '¿Deseas cambiar el estado a "En seguimiento"? Esto indicará que el equipo directivo ha comenzado a atender la situación.',
+      '¿Deseás cambiar el estado a "En seguimiento"? Esto indicará que el equipo directivo ha comenzado a atender la situación.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -118,7 +155,10 @@ export default function AuthorityReportDetailScreen() {
   const handleConfirmCloseNoCase = async () => {
     if (!report || !profile) return;
     if (!closeReason.trim() || closeReason.trim().length < 10) {
-      Alert.alert('Motivo insuficiente', 'Por favor ingresa una justificación fundamentada (mínimo 10 caracteres).');
+      Alert.alert(
+        'Motivo insuficiente',
+        'Por favor ingresá una justificación fundamentada (mínimo 10 caracteres).'
+      );
       return;
     }
 
@@ -136,7 +176,10 @@ export default function AuthorityReportDetailScreen() {
       } else {
         setCloseModalVisible(false);
         setCloseReason('');
-        Alert.alert('Reporte Cerrado', 'Se ha cerrado el reporte sin apertura de caso con la debida constancia.');
+        Alert.alert(
+          'Reporte Cerrado',
+          'Se ha cerrado el reporte sin apertura de caso con la debida constancia.'
+        );
         loadReport();
       }
     } finally {
@@ -162,207 +205,289 @@ export default function AuthorityReportDetailScreen() {
   }
 
   const badge = getStatusBadge(report.status);
+  const attachments = report.attachments || [];
 
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.container,
-        { paddingBottom: Math.max(insets.bottom, 24) + 40 },
-      ]}
-    >
-      <Stack.Screen options={{ title: 'Inspección de Reporte', headerBackTitle: 'Reportes' }} />
-      <Button
-        title="← Volver al listado"
-        variant="outline"
-        onPress={() => router.back()}
-        style={styles.backNavButton}
+    <>
+      <Stack.Screen
+        options={{
+          title: 'Detalle del reporte',
+          headerTitleAlign: 'center',
+          headerStyle: { backgroundColor: '#1E3A8A' },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontSize: 18,
+            fontWeight: '700',
+            color: '#FFFFFF',
+          },
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.headerNavBtn}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert(
+                  'Detalle de Auditoría',
+                  `ID: ${report.id}\nEstado: ${report.status}\nFecha creación: ${report.created_at}`
+                )
+              }
+              style={styles.headerNavBtn}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="settings-sharp" size={20} color="#BFDBFE" />
+            </TouchableOpacity>
+          ),
+        }}
       />
 
-      {/* Cabecera con Estado y Acciones de Transición */}
-      <Card style={styles.statusCard}>
-        <View style={styles.statusHeader}>
-          <View>
-            <Text style={styles.statusTitle}>Estado del Reporte</Text>
-            <Text style={styles.reportIdText}>ID: {report.id.substring(0, 8)}...</Text>
-          </View>
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
-          </View>
-        </View>
-
-        {/* Acceso al Chat de Comunicación con el Alumno */}
-        <Button
-          title="💬 Mensajes con el Estudiante"
-          onPress={() => router.push(`/(authority)/reports/${report.id}/chat` as any)}
-          style={styles.chatNavButton}
-        />
-
-        {/* Botones de acción según estado */}
-        {report.status === 'sent' && (
-          <View style={styles.statusActionsRow}>
-            <Button
-              title="▶ Iniciar Seguimiento"
-              onPress={handleSetInProgress}
-              style={styles.actionBtn}
-              disabled={updating}
-            />
-            <Button
-              title="Cerrar sin caso"
-              variant="outline"
-              onPress={() => setCloseModalVisible(true)}
-              style={styles.actionBtn}
-              disabled={updating}
-            />
-          </View>
-        )}
-
-        {report.status === 'in_progress' && (
-          <View style={styles.inProgressInfo}>
-            <Text style={styles.inProgressText}>
-              Este reporte está en etapa de seguimiento e investigación por las autoridades.
-            </Text>
-
-            {report.case_id ? (
-              <Button
-                title="📂 Ver Caso de Intervención Vinculado"
-                onPress={() => router.push(`/(authority)/cases/${report.case_id}` as any)}
-                style={styles.openCaseBtn}
-              />
-            ) : (
-              <Button
-                title="📂 Abrir Caso Formal de Protocolo"
-                onPress={() => router.push(`/(authority)/cases/new?reportId=${report.id}` as any)}
-                style={styles.openCaseBtn}
-              />
-            )}
-
-            <Button
-              title="Cerrar sin apertura de caso"
-              variant="outline"
-              onPress={() => setCloseModalVisible(true)}
-              style={styles.closeNoCaseBtn}
-              disabled={updating}
-            />
-          </View>
-        )}
-
-        {report.status === 'closed_no_case' && report.close_reason && (
-          <View style={styles.closedInfoBox}>
-            <Text style={styles.closedInfoTitle}>Fundamento de cierre sin apertura de caso:</Text>
-            <Text style={styles.closedInfoText}>{report.close_reason}</Text>
-          </View>
-        )}
-      </Card>
-
-      {/* Identificación del Alumno (Sin anonimato en Centinel) */}
-      <Card style={styles.card}>
-        <Text style={styles.sectionTitle}>Identificación del Alumno Remitente</Text>
-        <View style={styles.studentDetails}>
-          <Text style={styles.studentName}>
-            {report.student?.first_name} {report.student?.last_name}
-          </Text>
-          <Text style={styles.studentField}>DNI: {report.student?.dni || 'No informado'}</Text>
-          {report.course && (
-            <Text style={styles.studentField}>
-              Curso: {report.course.year}° división "{report.course.division}" ({report.course.shift})
-            </Text>
-          )}
-          <Text style={styles.studentField}>
-            Fecha de envío: {formatDate(report.created_at)}
-          </Text>
-        </View>
-      </Card>
-
-      {/* Detalles del Hecho */}
-      <Card style={styles.card}>
-        <Text style={styles.sectionTitle}>Descripción de los Hechos</Text>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Tipo de situación:</Text>
-          <Text style={styles.value}>{report.situation_type}</Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Lugar:</Text>
-          <Text style={styles.value}>{report.location}</Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Fecha comunicada del incidente:</Text>
-          <Text style={styles.value}>{formatDate(report.occurred_at)}</Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Frecuencia:</Text>
-          <Text style={styles.value}>{report.frequency}</Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Personas involucradas o testigos señalados:</Text>
-          <Text style={styles.value}>{report.involved_persons}</Text>
-        </View>
-
-        <View style={styles.divider} />
-
-        <Text style={styles.label}>Relato detallado:</Text>
-        <Text style={styles.descriptionText}>{report.description}</Text>
-      </Card>
-
-      {/* Adjuntos Multimedia */}
-      {report.attachments && report.attachments.length > 0 && (
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          { paddingBottom: Math.max(insets.bottom, 24) + 32 },
+        ]}
+      >
+        {/* CARD 1: ESTADO DEL REPORTE */}
         <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            Evidencia Multimedia Adjunta ({report.attachments.length})
-          </Text>
-          <View style={styles.attachmentsGrid}>
-            {report.attachments.map((att) => (
+          <View style={styles.statusHeaderRow}>
+            <Text style={styles.statusMainTitle}>Estado del reporte</Text>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: badge.bg, borderColor: badge.border },
+              ]}
+            >
+              <Text style={[styles.statusBadgeText, { color: badge.text }]}>
+                {badge.label}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.statusDateSub}>{formatSentDate(report.created_at)}</Text>
+
+          <View style={styles.cardDivider} />
+
+          <Text style={styles.sectionMiniLabel}>TIPO DE SITUACIÓN</Text>
+          <Text style={styles.situationTitle}>{report.situation_type}</Text>
+
+          <View style={styles.infoAuditRow}>
+            <Ionicons
+              name="information-circle"
+              size={15}
+              color="#64748B"
+              style={{ marginRight: 6, marginTop: 1 }}
+            />
+            <Text style={styles.infoAuditText}>
+              Primera apertura registrada en el historial del sistema.
+            </Text>
+          </View>
+
+          {/* Botón principal: Mensajes con el estudiante */}
+          <TouchableOpacity
+            style={styles.chatPrimaryBtn}
+            onPress={() => router.push(`/(authority)/reports/${report.id}/chat` as any)}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="chatbubble-ellipses"
+              size={18}
+              color="#FFFFFF"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.chatPrimaryBtnText}>Mensajes con el estudiante</Text>
+          </TouchableOpacity>
+
+          {/* Botones de acción según el estado */}
+          {report.status === 'sent' && (
+            <View style={styles.actionsRow}>
               <TouchableOpacity
-                key={att.id}
-                style={styles.attachmentItem}
-                activeOpacity={0.75}
-                onPress={() => {
-                  if (!att.public_url) return;
-                  if (att.file_type === 'image') {
-                    setPreviewImage(att.public_url);
-                  } else {
-                    Linking.openURL(att.public_url);
-                  }
-                }}
+                style={[styles.actionBtnFilled, updating && { opacity: 0.6 }]}
+                onPress={handleSetInProgress}
+                disabled={updating}
+                activeOpacity={0.8}
               >
-                {att.file_type === 'image' ? (
-                  <View style={styles.thumbnailWrapper}>
-                    {att.public_url ? (
-                      <Image
-                        source={{ uri: att.public_url }}
-                        style={styles.imageThumbnail}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={[styles.imageThumbnail, styles.placeholderThumb]}>
-                        <Text style={styles.placeholderIcon}>🖼️</Text>
-                        <Text style={styles.placeholderText}>Cargando imagen...</Text>
-                      </View>
-                    )}
-                  </View>
-                ) : (
-                  <View style={styles.videoThumbnail}>
-                    <Text style={styles.videoIcon}>🎥</Text>
-                    <Text style={styles.videoText}>Abrir Video</Text>
-                  </View>
-                )}
-                <Text style={styles.fileName} numberOfLines={1}>
-                  {att.original_name}
-                </Text>
-                <Text style={styles.fileSize}>
-                  {(att.file_size_bytes / (1024 * 1024)).toFixed(2)} MB · Tocar para ver
-                </Text>
+                <Ionicons name="play" size={13} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.actionBtnFilledText}>Iniciar seguimiento</Text>
               </TouchableOpacity>
-            ))}
+
+              <TouchableOpacity
+                style={[styles.actionBtnOutline, updating && { opacity: 0.6 }]}
+                onPress={() => setCloseModalVisible(true)}
+                disabled={updating}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.actionBtnOutlineText}>Cerrar sin apertura de caso</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {report.status === 'in_progress' && (
+            <View style={{ marginTop: 10 }}>
+              <View style={styles.actionsRow}>
+                {report.case_id ? (
+                  <TouchableOpacity
+                    style={styles.actionBtnFilled}
+                    onPress={() => router.push(`/(authority)/cases/${report.case_id}` as any)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="folder-open" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.actionBtnFilledText}>Ver caso vinculado</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.actionBtnFilled}
+                    onPress={() =>
+                      router.push(`/(authority)/cases/new?reportId=${report.id}` as any)
+                    }
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="folder-open" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.actionBtnFilledText}>Abrir caso formal</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={styles.actionBtnOutline}
+                  onPress={() => setCloseModalVisible(true)}
+                  disabled={updating}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.actionBtnOutlineText}>Cerrar sin caso</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {report.status === 'closed_no_case' && report.close_reason && (
+            <View style={styles.closedReasonBox}>
+              <Text style={styles.closedReasonTitle}>Fundamento de cierre sin apertura de caso:</Text>
+              <Text style={styles.closedReasonText}>{report.close_reason}</Text>
+            </View>
+          )}
+        </Card>
+
+        {/* CARD 2: ESTUDIANTE QUE REALIZÓ EL REPORTE */}
+        <Card style={styles.card}>
+          <Text style={styles.cardSectionTitle}>Estudiante que realizó el reporte</Text>
+          <View style={styles.studentInfoRow}>
+            <View style={styles.studentAvatarBox}>
+              <Ionicons name="person" size={24} color="#2563EB" />
+            </View>
+            <View style={styles.studentMetaBox}>
+              <Text style={styles.studentFullName}>
+                {report.student
+                  ? `${report.student.first_name} ${report.student.last_name}`
+                  : 'Estudiante'}
+              </Text>
+              <Text style={styles.studentMetaDetail}>
+                DNI: {report.student?.dni || 'No informado'}
+              </Text>
+              {report.course && (
+                <Text style={styles.studentMetaDetail}>
+                  Curso: {report.course.year}° división "{report.course.division}" ({report.course.shift})
+                </Text>
+              )}
+            </View>
           </View>
         </Card>
-      )}
 
-      {/* Visor Modal de Imagen en Pantalla Completa */}
+        {/* CARD 3: INFORMACIÓN DEL REPORTE */}
+        <Card style={styles.card}>
+          <Text style={styles.cardSectionTitle}>Información del reporte</Text>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.fieldLabel}>LUGAR:</Text>
+            <Text style={styles.fieldValue}>{report.location}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.fieldLabel}>FECHA COMUNICADA DEL INCIDENTE:</Text>
+            <Text style={styles.fieldValue}>{formatOccurredDate(report.occurred_at)}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.fieldLabel}>FRECUENCIA:</Text>
+            <Text style={styles.fieldValue}>{report.frequency}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.fieldLabel}>PERSONAS MENCIONADAS:</Text>
+            <Text style={styles.fieldValue}>{report.involved_persons}</Text>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.detailRow}>
+            <Text style={styles.fieldLabel}>RELATO DEL ESTUDIANTE:</Text>
+            <Text style={styles.fieldValueDescription}>{report.description}</Text>
+          </View>
+        </Card>
+
+        {/* CARD 4: ARCHIVOS ADJUNTOS */}
+        <Card style={styles.card}>
+          <Text style={styles.cardSectionTitle}>
+            Archivos adjuntos ({attachments.length})
+          </Text>
+
+          {attachments.length === 0 ? (
+            <Text style={styles.noAttachmentsText}>
+              El estudiante no adjuntó imágenes ni videos en este reporte.
+            </Text>
+          ) : (
+            <View style={styles.attachmentsList}>
+              {attachments.map((att) => (
+                <TouchableOpacity
+                  key={att.id}
+                  style={styles.attachmentCard}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    if (!att.public_url) return;
+                    if (att.file_type === 'image') {
+                      setPreviewImage(att.public_url);
+                    } else {
+                      Linking.openURL(att.public_url);
+                    }
+                  }}
+                >
+                  {/* Miniatura visual */}
+                  {att.file_type === 'image' && att.public_url ? (
+                    <Image
+                      source={{ uri: att.public_url }}
+                      style={styles.attThumbnail}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.attThumbnail, styles.attPlaceholder]}>
+                      <Ionicons
+                        name={att.file_type === 'video' ? 'videocam' : 'image'}
+                        size={24}
+                        color="#2563EB"
+                      />
+                    </View>
+                  )}
+
+                  {/* Datos del archivo */}
+                  <View style={styles.attMeta}>
+                    <Text style={styles.attName} numberOfLines={1}>
+                      {att.original_name}
+                    </Text>
+                    <Text style={styles.attSize}>
+                      {formatFileSize(att.file_size_bytes)}
+                    </Text>
+                    <Text style={styles.attLink}>Tocar para ver</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </Card>
+      </ScrollView>
+
+      {/* MODAL: VISOR DE IMAGEN EN PANTALLA COMPLETA */}
       <Modal
         visible={!!previewImage}
         transparent
@@ -386,13 +511,13 @@ export default function AuthorityReportDetailScreen() {
         </View>
       </Modal>
 
-      {/* Modal para Cerrar sin apertura de caso con Justificación */}
+      {/* MODAL: CERRAR SIN APERTURA DE CASO */}
       <Modal visible={closeModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <Card style={styles.modalCard}>
             <Text style={styles.modalTitle}>Cerrar sin apertura de caso</Text>
             <Text style={styles.modalSubtitle}>
-              Debes dejar constancia fundamentada de por qué este reporte se concluye sin iniciar un protocolo o caso formal.
+              Debés dejar constancia fundamentada de por qué este reporte se concluye sin iniciar un protocolo o caso formal.
             </Text>
 
             <Input
@@ -421,275 +546,329 @@ export default function AuthorityReportDetailScreen() {
           </Card>
         </View>
       </Modal>
-    </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     backgroundColor: '#F8FAFC',
     flexGrow: 1,
-    gap: 16,
+    gap: 14,
+  },
+  headerNavBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  backNavButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: '#F8FAFC',
   },
   backButton: {
     marginTop: 16,
   },
   errorText: {
     fontSize: 16,
-    color: '#EF4444',
-    fontWeight: '600',
+    color: '#991B1B',
+    textAlign: 'center',
   },
-  statusCard: {
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     padding: 16,
   },
-  statusHeader: {
+  statusHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  statusTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  reportIdText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    marginTop: 2,
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  statusActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-  },
-  chatNavButton: {
-    marginBottom: 10,
-    backgroundColor: '#1E3A8A',
-  },
-  actionBtn: {
-    flex: 1,
-  },
-  inProgressInfo: {
-    gap: 8,
-  },
-  inProgressText: {
-    fontSize: 13,
-    color: '#D97706',
-    fontWeight: '500',
-    textAlign: 'justify',
-  },
-  closeNoCaseBtn: {
-    marginTop: 4,
-  },
-  openCaseBtn: {
-    backgroundColor: '#0F766E',
-    marginTop: 4,
-  },
-  closedInfoBox: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 6,
-  },
-  closedInfoTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  closedInfoText: {
-    fontSize: 13,
-    color: '#475569',
-    marginTop: 4,
-    lineHeight: 18,
-    textAlign: 'justify',
-  },
-  card: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 12,
-  },
-  studentDetails: {
-    gap: 4,
-  },
-  studentName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1E3A8A',
     marginBottom: 4,
   },
-  studentField: {
-    fontSize: 13,
-    color: '#475569',
+  statusMainTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  detailRow: {
-    marginBottom: 8,
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
   },
-  label: {
+  statusBadgeText: {
     fontSize: 12,
     fontWeight: '700',
+  },
+  statusDateSub: {
+    fontSize: 12.5,
     color: '#64748B',
-    textTransform: 'uppercase',
+    marginBottom: 12,
   },
-  value: {
-    fontSize: 14,
-    color: '#1E293B',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  divider: {
+  cardDivider: {
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
     marginVertical: 12,
   },
-  descriptionText: {
-    fontSize: 14,
-    color: '#334155',
-    lineHeight: 22,
-    marginTop: 4,
-    textAlign: 'justify',
+  sectionMiniLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  attachmentsGrid: {
+  situationTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 6,
+    letterSpacing: -0.2,
+  },
+  infoAuditRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    alignItems: 'flex-start',
+    marginBottom: 14,
   },
-  attachmentItem: {
-    width: '47%',
+  infoAuditText: {
+    fontSize: 12,
+    color: '#64748B',
+    flex: 1,
+    lineHeight: 16,
+  },
+  chatPrimaryBtn: {
+    backgroundColor: '#1E3A8A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  chatPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionBtnFilled: {
+    flex: 1,
+    backgroundColor: '#1E3A8A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 11,
+    borderRadius: 10,
+  },
+  actionBtnFilledText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  actionBtnOutline: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#1E3A8A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 11,
+    borderRadius: 10,
+  },
+  actionBtnOutlineText: {
+    color: '#1E3A8A',
+    fontSize: 12.5,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  closedReasonBox: {
+    marginTop: 12,
+    padding: 12,
     backgroundColor: '#F8FAFC',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    padding: 8,
-    alignItems: 'center',
   },
-  thumbnailWrapper: {
-    width: '100%',
-    height: 110,
-    borderRadius: 6,
-    overflow: 'hidden',
-    backgroundColor: '#E2E8F0',
-  },
-  imageThumbnail: {
-    width: '100%',
-    height: 110,
-    borderRadius: 6,
-  },
-  videoThumbnail: {
-    width: '100%',
-    height: 110,
-    borderRadius: 6,
-    backgroundColor: '#0F172A',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  videoIcon: {
-    fontSize: 32,
-  },
-  videoText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  fileName: {
+  closedReasonTitle: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginTop: 6,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 4,
   },
-  fileSize: {
-    fontSize: 11,
-    color: '#94A3B8',
+  closedReasonText: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
+  cardSectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 12,
   },
-  modalCard: {
-    padding: 20,
+  studentInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  modalSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    lineHeight: 18,
-    textAlign: 'justify',
-  },
-  modalButtonsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 8,
-  },
-  modalBtn: {
-    flex: 1,
-  },
-  placeholderThumb: {
-    backgroundColor: '#F1F5F9',
+  studentAvatarBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholderIcon: {
-    fontSize: 24,
+  studentMetaBox: {
+    flex: 1,
   },
-  placeholderText: {
-    fontSize: 10,
-    color: '#94A3B8',
-    marginTop: 4,
+  studentFullName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E3A8A',
+    marginBottom: 2,
+  },
+  studentMetaDetail: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+    gap: 8,
+  },
+  fieldLabel: {
+    width: 140,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.3,
+    lineHeight: 16,
+  },
+  fieldValue: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0F172A',
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  fieldValueDescription: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0F172A',
+    lineHeight: 18,
+  },
+  noAttachmentsText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontStyle: 'italic',
+  },
+  attachmentsList: {
+    gap: 10,
+  },
+  attachmentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 10,
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  attThumbnail: {
+    width: 85,
+    height: 65,
+    borderRadius: 8,
+  },
+  attPlaceholder: {
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  attMeta: {
+    flex: 1,
+  },
+  attName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  attSize: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  attLink: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2563EB',
   },
   fullscreenOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.92)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
   },
   closeFullscreenBtn: {
     position: 'absolute',
-    top: 40,
+    top: 50,
     right: 20,
-    padding: 10,
     zIndex: 10,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   closeFullscreenText: {
     color: '#FFFFFF',
-    fontSize: 16,
     fontWeight: '700',
+    fontSize: 14,
   },
   fullscreenImage: {
-    width: '100%',
+    width: '95%',
     height: '80%',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  modalBtn: {
+    flex: 1,
   },
 });
