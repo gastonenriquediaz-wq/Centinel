@@ -10,7 +10,7 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
@@ -35,9 +35,21 @@ export default function AuthorityReportsList() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const { filter } = useLocalSearchParams<{ filter?: string }>();
+  const [selectedFilter, setSelectedFilter] = useState<FilterType>(
+    filter && ['sent', 'in_progress', 'closed_no_case', 'finalized', 'all'].includes(filter)
+      ? (filter as FilterType)
+      : 'all'
+  );
+
+  useEffect(() => {
+    if (filter && ['sent', 'in_progress', 'closed_no_case', 'finalized', 'all'].includes(filter)) {
+      setSelectedFilter(filter as FilterType);
+    }
+  }, [filter]);
+
   // Estados de búsqueda, filtros y ordenamiento
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
   const [sortAscending, setSortAscending] = useState(false); // false = más recientes primero
 
   const openedReportIds = useReportsStore((state) => state.openedReportIds);

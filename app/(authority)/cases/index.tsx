@@ -8,37 +8,59 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { CasesService } from '../../../src/services/cases.service';
 import { Case, CaseStatus } from '../../../src/types/database.types';
 
-const FILTER_TABS: { label: string; value: CaseStatus | 'all' }[] = [
+type CaseFilterType = 'all' | 'active' | 'open' | 'under_investigation' | 'resolved';
+
+const FILTER_TABS: { label: string; value: CaseFilterType }[] = [
   { label: 'Todos', value: 'all' },
-  { label: 'Abiertos', value: 'open' },
+  { label: 'Abiertos', value: 'active' }, // Muestra 'open' y 'under_investigation'
   { label: 'En Investigación', value: 'under_investigation' },
   { label: 'Resueltos', value: 'resolved' },
 ];
 
 export default function AuthorityCasesList() {
   const { profile } = useAuthStore();
+  const { filter } = useLocalSearchParams<{ filter?: string }>();
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<CaseStatus | 'all'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<CaseFilterType>(
+    filter && ['all', 'active', 'open', 'under_investigation', 'resolved'].includes(filter)
+      ? (filter as CaseFilterType)
+      : 'all'
+  );
+
+  useEffect(() => {
+    if (filter && ['all', 'active', 'open', 'under_investigation', 'resolved'].includes(filter)) {
+      setSelectedFilter(filter as CaseFilterType);
+    }
+  }, [filter]);
 
   const loadCases = async () => {
     if (!profile?.institution_id) return;
     try {
-      const statusParam = selectedFilter === 'all' ? undefined : selectedFilter;
+      const statusParam =
+        selectedFilter === 'all' || selectedFilter === 'active'
+          ? undefined
+          : (selectedFilter as CaseStatus);
+
       const { data, error } = await CasesService.getInstitutionCases(
         profile.institution_id,
         statusParam
       );
       if (!error && data) {
-        setCases(data);
+        if (selectedFilter === 'active') {
+          // Filtra los casos 'open' y 'under_investigation' (no resueltos)
+          setCases(data.filter((c) => c.status !== 'resolved'));
+        } else {
+          setCases(data);
+        }
       }
     } finally {
       setLoading(false);

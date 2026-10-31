@@ -26,30 +26,17 @@ export default function AuthorityDashboard() {
       const requests = await StudentsService.getPendingRequests(profile.institution_id);
       setPendingRequestsCount(requests.length);
 
-      // 2. Reportes: identificar cuáles ya fueron abiertos/inspeccionados
-      const [reportsResult, openedIds] = await Promise.all([
-        ReportsService.getInstitutionReports(profile.institution_id),
-        ReportsService.getOpenedReportIds(profile.institution_id),
-      ]);
+      // 2. Reportes: enviados ('sent') y en seguimiento ('in_progress')
+      const { data: allReports } = await ReportsService.getInstitutionReports(
+        profile.institution_id
+      );
 
-      if (openedIds && openedIds.size > 0) {
-        useReportsStore.getState().setOpenedReportIds(openedIds);
-      }
-      const allOpened = useReportsStore.getState().openedReportIds;
+      if (allReports) {
+        const sentReports = allReports.filter((r) => r.status === 'sent');
+        const inProgressReports = allReports.filter((r) => r.status === 'in_progress');
 
-      if (reportsResult.data) {
-        const allReports = reportsResult.data;
-        // Un reporte es nuevo si está en 'sent' Y NO ha sido abierto aún
-        const newUnopenedReports = allReports.filter(
-          (r) => r.status === 'sent' && !allOpened.has(r.id)
-        );
-        // En atención son los que están en 'in_progress' o en 'sent' que ya fueron inspeccionados/abiertos
-        const inAttentionReports = allReports.filter(
-          (r) => r.status === 'in_progress' || (r.status === 'sent' && allOpened.has(r.id))
-        );
-
-        setSentReportsCount(newUnopenedReports.length);
-        setInProgressReportsCount(inAttentionReports.length);
+        setSentReportsCount(sentReports.length);
+        setInProgressReportsCount(inProgressReports.length);
       }
 
       // 3. Casos activos ('open' o 'under_investigation')
@@ -168,8 +155,12 @@ export default function AuthorityDashboard() {
         <View style={styles.statsGrid}>
           {/* Fila 1 */}
           <View style={styles.statsRow}>
-            {/* Reportes nuevos */}
-            <View style={styles.statCard}>
+            {/* Reportes nuevos -> Navega a Reportes recibidos con filtro 'sent' (Enviado) */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push('/(authority)/reports?filter=sent')}
+              style={styles.statCard}
+            >
               <View style={[styles.statIconCircle, { backgroundColor: '#EFF6FF' }]}>
                 <Ionicons name="document-text" size={20} color="#2563EB" />
               </View>
@@ -177,26 +168,34 @@ export default function AuthorityDashboard() {
                 <Text style={styles.statLabel}>Reportes nuevos</Text>
                 <Text style={[styles.statValue, { color: '#1D4ED8' }]}>{sentReportsCount}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            {/* Reportes en atención */}
-            <View style={styles.statCard}>
+            {/* Reportes en seguimiento -> Navega a Reportes recibidos con filtro 'in_progress' (En seguimiento) */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push('/(authority)/reports?filter=in_progress')}
+              style={styles.statCard}
+            >
               <View style={[styles.statIconCircle, { backgroundColor: '#FEF3C7' }]}>
                 <Ionicons name="time" size={20} color="#D97706" />
               </View>
               <View style={styles.statContent}>
-                <Text style={styles.statLabel}>Reportes en atención</Text>
+                <Text style={styles.statLabel}>Reportes en seguimiento</Text>
                 <Text style={[styles.statValue, { color: '#B45309' }]}>
                   {inProgressReportsCount}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Fila 2 */}
           <View style={styles.statsRow}>
-            {/* Casos abiertos */}
-            <View style={styles.statCard}>
+            {/* Casos abiertos -> Navega a Casos y protocolos con filtro 'active' (Abiertos y En investigación) */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push('/(authority)/cases?filter=active')}
+              style={styles.statCard}
+            >
               <View style={[styles.statIconCircle, { backgroundColor: '#FEE2E2' }]}>
                 <Ionicons name="folder" size={20} color="#DC2626" />
               </View>
@@ -204,10 +203,14 @@ export default function AuthorityDashboard() {
                 <Text style={styles.statLabel}>Casos abiertos</Text>
                 <Text style={[styles.statValue, { color: '#DC2626' }]}>{activeCasesCount}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            {/* Registros pendientes */}
-            <View style={styles.statCard}>
+            {/* Registros pendientes -> Navega a Solicitudes de registro */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push('/(authority)/requests')}
+              style={styles.statCard}
+            >
               <View style={[styles.statIconCircle, { backgroundColor: '#F3E8FF' }]}>
                 <Ionicons name="people" size={20} color="#7C3AED" />
               </View>
@@ -217,7 +220,7 @@ export default function AuthorityDashboard() {
                   {pendingRequestsCount}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
