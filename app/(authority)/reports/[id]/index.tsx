@@ -348,18 +348,18 @@ export default function AuthorityReportDetailScreen() {
           )}
 
           {report.status === 'in_progress' && (
-            <View style={{ marginTop: 10 }}>
-              <View style={styles.actionsRow}>
-                {report.case_id ? (
-                  <TouchableOpacity
-                    style={styles.actionBtnFilled}
-                    onPress={() => router.push(`/(authority)/cases/${report.case_id}` as any)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="folder-open" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.actionBtnFilledText}>Ver caso vinculado</Text>
-                  </TouchableOpacity>
-                ) : (
+            <View style={{ marginTop: 2 }}>
+              {report.case_id ? (
+                <TouchableOpacity
+                  style={styles.caseLinkedBtn}
+                  onPress={() => router.push(`/(authority)/cases/${report.case_id}` as any)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="folder-open" size={17} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.caseLinkedBtnText}>Ver caso vinculado</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.actionsRow}>
                   <TouchableOpacity
                     style={styles.actionBtnFilled}
                     onPress={() =>
@@ -370,17 +370,30 @@ export default function AuthorityReportDetailScreen() {
                     <Ionicons name="folder-open" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
                     <Text style={styles.actionBtnFilledText}>Abrir caso formal</Text>
                   </TouchableOpacity>
-                )}
 
-                <TouchableOpacity
-                  style={styles.actionBtnOutline}
-                  onPress={() => setCloseModalVisible(true)}
-                  disabled={updating}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.actionBtnOutlineText}>Cerrar sin caso</Text>
-                </TouchableOpacity>
-              </View>
+                  <TouchableOpacity
+                    style={styles.actionBtnOutline}
+                    onPress={() => setCloseModalVisible(true)}
+                    disabled={updating}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.actionBtnOutlineText}>Cerrar sin caso</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
+          {report.status === 'finalized' && report.case_id && (
+            <View style={{ marginTop: 2 }}>
+              <TouchableOpacity
+                style={styles.caseLinkedBtn}
+                onPress={() => router.push(`/(authority)/cases/${report.case_id}` as any)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="folder-open" size={17} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.caseLinkedBtnText}>Ver caso vinculado</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -675,6 +688,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   chatPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  caseLinkedBtn: {
+    backgroundColor: '#16A34A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  caseLinkedBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
