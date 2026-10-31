@@ -340,13 +340,20 @@ export const ReportsService = {
   },
 
   /**
-   * Registra la primera apertura de un reporte por parte de una autoridad (RPC)
+   * Registra la primera apertura de un reporte por parte de una autoridad (RPC).
+   * Retorna true si es la primera vez que se abre en el sistema, o false si ya fue abierto previamente.
    */
-  async logFirstOpened(reportId: string): Promise<void> {
+  async logFirstOpened(reportId: string): Promise<boolean> {
     try {
-      await supabase.rpc('log_report_first_opened', { p_report_id: reportId });
+      const { data, error } = await supabase.rpc('log_report_first_opened', { p_report_id: reportId });
+      if (error) {
+        console.log('Error en RPC log_report_first_opened:', error.message);
+        return false;
+      }
+      return data === true;
     } catch (err) {
       console.log('Auditoría logFirstOpened omitida o ya registrada:', err);
+      return false;
     }
   },
 };

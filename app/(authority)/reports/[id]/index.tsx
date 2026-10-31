@@ -33,6 +33,7 @@ export default function AuthorityReportDetailScreen() {
   const [closeModalVisible, setCloseModalVisible] = useState(false);
   const [closeReason, setCloseReason] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isFirstOpenedNow, setIsFirstOpenedNow] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -46,7 +47,8 @@ export default function AuthorityReportDetailScreen() {
       if (!error && data) {
         setReport(data);
         // Registrar primera lectura en el audit log (Requisito I-02)
-        ReportsService.logFirstOpened(data.id);
+        const isFirst = await ReportsService.logFirstOpened(data.id);
+        setIsFirstOpenedNow(isFirst);
       }
     } finally {
       setLoading(false);
@@ -274,17 +276,19 @@ export default function AuthorityReportDetailScreen() {
           <Text style={styles.sectionMiniLabel}>TIPO DE SITUACIÓN</Text>
           <Text style={styles.situationTitle}>{report.situation_type}</Text>
 
-          <View style={styles.infoAuditRow}>
-            <Ionicons
-              name="information-circle"
-              size={15}
-              color="#64748B"
-              style={{ marginRight: 6, marginTop: 1 }}
-            />
-            <Text style={styles.infoAuditText}>
-              Primera apertura registrada en el historial del sistema.
-            </Text>
-          </View>
+          {isFirstOpenedNow && (
+            <View style={styles.infoAuditRow}>
+              <Ionicons
+                name="information-circle"
+                size={15}
+                color="#64748B"
+                style={{ marginRight: 6, marginTop: 1 }}
+              />
+              <Text style={styles.infoAuditText}>
+                Primera apertura registrada en el historial del sistema.
+              </Text>
+            </View>
+          )}
 
           {/* Botón principal: Mensajes con el estudiante */}
           <TouchableOpacity
