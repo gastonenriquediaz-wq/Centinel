@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
-  Alert,
+  ScrollView,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +19,14 @@ import { ReportsService } from '../../../src/services/reports.service';
 import { Report, ReportStatus } from '../../../src/types/database.types';
 
 type FilterType = 'all' | 'sent' | 'in_progress' | 'closed_no_case' | 'finalized';
+
+const FILTER_TABS: { label: string; value: FilterType }[] = [
+  { label: 'Todos', value: 'all' },
+  { label: 'Enviado', value: 'sent' },
+  { label: 'En seguimiento', value: 'in_progress' },
+  { label: 'Cerrados', value: 'closed_no_case' },
+  { label: 'Finalizados', value: 'finalized' },
+];
 
 export default function AuthorityReportsList() {
   const { profile } = useAuthStore();
@@ -88,7 +96,7 @@ export default function AuthorityReportsList() {
     }
   };
 
-  // Filtrado y búsqueda
+  // Filtrado y búsqueda reactivos
   const filteredAndSortedReports = useMemo(() => {
     let result = [...reports];
 
@@ -137,31 +145,6 @@ export default function AuthorityReportsList() {
       return updated;
     });
     router.push(`/(authority)/reports/${reportId}` as any);
-  };
-
-  const handleMoreFilters = () => {
-    Alert.alert(
-      'Más filtros de estado',
-      'Seleccioná un estado adicional para filtrar los reportes:',
-      [
-        {
-          text: 'Cerrados sin apertura',
-          onPress: () => setSelectedFilter('closed_no_case'),
-        },
-        {
-          text: 'Finalizados',
-          onPress: () => setSelectedFilter('finalized'),
-        },
-        {
-          text: 'Ver todos',
-          onPress: () => setSelectedFilter('all'),
-        },
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-      ]
-    );
   };
 
   return (
@@ -217,84 +200,34 @@ export default function AuthorityReportsList() {
               )}
             </View>
 
-            {/* Fila de Filtros tipo Chips */}
-            <View style={styles.filterRow}>
-              {/* Todos */}
-              <TouchableOpacity
-                style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipSelected]}
-                onPress={() => setSelectedFilter('all')}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    selectedFilter === 'all' && styles.filterChipTextSelected,
-                  ]}
-                >
-                  Todos
-                </Text>
-              </TouchableOpacity>
-
-              {/* Enviado */}
-              <TouchableOpacity
-                style={[styles.filterChip, selectedFilter === 'sent' && styles.filterChipSelected]}
-                onPress={() => setSelectedFilter('sent')}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    selectedFilter === 'sent' && styles.filterChipTextSelected,
-                  ]}
-                >
-                  Enviado
-                </Text>
-              </TouchableOpacity>
-
-              {/* En seguimiento */}
-              <TouchableOpacity
-                style={[
-                  styles.filterChip,
-                  selectedFilter === 'in_progress' && styles.filterChipSelected,
-                ]}
-                onPress={() => setSelectedFilter('in_progress')}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    selectedFilter === 'in_progress' && styles.filterChipTextSelected,
-                  ]}
-                >
-                  En seguimiento
-                </Text>
-              </TouchableOpacity>
-
-              {/* Más filtros */}
-              <TouchableOpacity
-                style={[
-                  styles.filterChip,
-                  (selectedFilter === 'closed_no_case' || selectedFilter === 'finalized') &&
-                    styles.filterChipSelected,
-                ]}
-                onPress={handleMoreFilters}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    (selectedFilter === 'closed_no_case' || selectedFilter === 'finalized') &&
-                      styles.filterChipTextSelected,
-                  ]}
-                >
-                  {selectedFilter === 'closed_no_case'
-                    ? 'Cerrado'
-                    : selectedFilter === 'finalized'
-                    ? 'Finalizado'
-                    : 'Más filtros'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            {/* Fila de Filtros horizontales desplazables con el dedo */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScroll}
+              style={styles.filterScrollView}
+            >
+              {FILTER_TABS.map((tab) => {
+                const isSelected = selectedFilter === tab.value;
+                return (
+                  <TouchableOpacity
+                    key={tab.value}
+                    style={[styles.filterChip, isSelected && styles.filterChipSelected]}
+                    onPress={() => setSelectedFilter(tab.value)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        isSelected && styles.filterChipTextSelected,
+                      ]}
+                    >
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
             {/* Ordenamiento por fecha */}
             <View style={styles.sortRow}>
@@ -485,15 +418,18 @@ const styles = StyleSheet.create({
   clearBtn: {
     padding: 4,
   },
-  filterRow: {
+  filterScrollView: {
+    marginBottom: 14,
+  },
+  filterScroll: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 14,
+    paddingRight: 8,
   },
   filterChip: {
     paddingVertical: 8,
-    paddingHorizontal: 13,
+    paddingHorizontal: 14,
     borderRadius: 20,
     backgroundColor: '#F1F5F9',
     justifyContent: 'center',
@@ -503,7 +439,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E3A8A',
   },
   filterChipText: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '600',
     color: '#334155',
   },
