@@ -100,6 +100,29 @@ export const MessagesService = {
   },
 
   /**
+   * Obtiene la cantidad de usuarios (estudiantes) que han enviado mensajes no leídos a la autoridad
+   */
+  async getUnreadStudentChatsCount(institutionId?: string): Promise<number> {
+    try {
+      const { data: messages, error } = await supabase
+        .from('report_messages')
+        .select('sender_id, report_id')
+        .eq('sender_role', 'student')
+        .is('read_at', null);
+
+      if (error || !messages || messages.length === 0) {
+        return 0;
+      }
+
+      // Estudiantes únicos que enviaron mensajes no leídos
+      const uniqueStudents = new Set(messages.map((m) => m.sender_id));
+      return uniqueStudents.size;
+    } catch {
+      return 0;
+    }
+  },
+
+  /**
    * Suscripción en tiempo real a nuevos mensajes del reporte
    */
   subscribeToMessages(

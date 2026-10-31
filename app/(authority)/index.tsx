@@ -10,6 +10,7 @@ import { StudentsService } from '../../src/services/students.service';
 import { ReportsService } from '../../src/services/reports.service';
 import { useReportsStore } from '../../src/store/reports.store';
 import { CasesService } from '../../src/services/cases.service';
+import { MessagesService } from '../../src/services/messages.service';
 
 export default function AuthorityDashboard() {
   const insets = useSafeAreaInsets();
@@ -18,28 +19,50 @@ export default function AuthorityDashboard() {
   const [sentReportsCount, setSentReportsCount] = useState<number>(0);
   const [inProgressReportsCount, setInProgressReportsCount] = useState<number>(0);
   const [activeCasesCount, setActiveCasesCount] = useState<number>(0);
+  const [unreadChatsCount, setUnreadChatsCount] = useState<number>(0);
 
   const loadDashboardMetrics = async () => {
     if (!profile?.institution_id) return;
     try {
-      // 1. Solicitudes pendientes de registro
+      // 1. Cargar reportes vistos guardados en storage local
+      await useReportsStore.getState().loadPersistedSeenReports();
+
+      // 2. Solicitudes pendientes de registro
       const requests = await StudentsService.getPendingRequests(profile.institution_id);
       setPendingRequestsCount(requests.length);
 
-      // 2. Reportes: enviados ('sent') y en seguimiento ('in_progress')
-      const { data: allReports } = await ReportsService.getInstitutionReports(
-        profile.institution_id
-      );
+      // 3. Reportes, lecturas de auditoría y chats no leídos
+      const [reportsResult, openedIds, unreadChats] = await Promise.all([
+        ReportsService.getInstitutionReports(profile.institution_id),
+        ReportsService.getOpenedReportIds(profile.institution_id),
+        MessagesService.getUnreadStudentChatsCount(profile.institution_id),
+      ]);
 
-      if (allReports) {
-        const sentReports = allReports.filter((r) => r.status === 'sent');
+      setUnreadChatsCount(unreadChats);
+
+      if (openedIds && openedIds.size > 0) {
+        useReportsStore.getState().setOpenedReportIds(openedIds);
+      }
+
+      if (reportsResult.data) {
+        const allReports = reportsResult.data;
+        const allReportIds = allReports.map((r) => r.id);
+
+        // Inicializar los reportes existentes como vistos
+        await useReportsStore.getState().initializeSeenReports(allReportIds);
+
+        const allSeenIds = useReportsStore.getState().openedReportIds;
+
+        // Reportes nuevos: aquellos que NUNCA fueron vistos/abiertos por la autoridad escolar
+        const newUnseenReports = allReports.filter((r) => !allSeenIds.has(r.id));
+        setSentReportsCount(newUnseenReports.length);
+
+        // Reportes en seguimiento: con estado 'in_progress'
         const inProgressReports = allReports.filter((r) => r.status === 'in_progress');
-
-        setSentReportsCount(sentReports.length);
         setInProgressReportsCount(inProgressReports.length);
       }
 
-      // 3. Casos activos ('open' o 'under_investigation')
+      // 4. Casos activos ('open' o 'under_investigation')
       const { data: cases } = await CasesService.getInstitutionCases(profile.institution_id);
       if (cases) {
         const active = cases.filter((c) => c.status !== 'resolved');
@@ -242,9 +265,11 @@ export default function AuthorityDashboard() {
               Consultar comunicaciones, evidencias y mensajes enviados por estudiantes.
             </Text>
           </View>
-          {sentReportsCount > 0 && (
-            <View style={styles.newReportBadge}>
-              <Text style={styles.newReportBadgeText}>{sentReportsCount} nuevo{sentReportsCount > 1 ? 's' : ''}</Text>
+          {unreadChatsCount > 0 && (
+            <View style={styles.chatBadge}>
+              <Text style={styles.chatBadgeText}>
+                {unreadChatsCount === 1 ? '1 chat\nnuevo' : `${unreadChatsCount} chat\nnuevos`}
+              </Text>
             </View>
           )}
           <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
@@ -494,18 +519,23 @@ const styles = StyleSheet.create({
     color: '#64748B',
     lineHeight: 16,
   },
-  newReportBadge: {
+  chatBadge: {
     backgroundColor: '#EFF6FF',
     borderColor: '#BFDBFE',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 54,
   },
-  newReportBadgeText: {
+  chatBadgeText: {
     color: '#1D4ED8',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 13,
   },
   caseBadge: {
     backgroundColor: '#FEF3C7',
