@@ -142,6 +142,22 @@ export const CasesService = {
       }
 
       const caseItem = data as Case;
+      
+            // Obtener todos los reportes vinculados al caso
+            const { data: linkedReports } = await supabase
+              .from('reports')
+              .select(`
+                *,
+                student:profiles!reports_student_id_fkey(*),
+                course:courses(*),
+                attachments:report_attachments(*)
+              `)
+              .or(`id.eq.${caseItem.report_id},case_id.eq.${caseId}`)
+              .order('created_at', { ascending: true });
+      
+            if (linkedReports && linkedReports.length > 0) {
+              caseItem.linked_reports = linkedReports as any;
+            }
       // Ordenar actas cronológicamente
       if (caseItem.acts) {
         caseItem.acts.sort(
@@ -242,14 +258,14 @@ export const CasesService = {
         return { error: caseError.message };
       }
 
-      // 2. Finalizar el reporte vinculado
+      // 2. Finalizar el reporte principal y todos los reportes vinculados al caso
       await supabase
         .from('reports')
         .update({
           status: 'finalized',
           updated_at: new Date().toISOString(),
         })
-        .eq('id', reportId);
+        .or(`id.eq.${reportId},case_id.eq.${caseId}`);
 
       // 3. Registrar en Audit Log
       await supabase.from('audit_log').insert({
@@ -266,6 +282,48 @@ export const CasesService = {
       return { error: null };
     } catch (err: any) {
       return { error: err.message };
+    }
+  },
+
+  /**
+   * Vincula un reporte existente a un caso formal existente
+   */
+  async linkReportToCase(
+    reportId: string,
+    caseId: string,
+    performedBy: string,
+    institutionId: string
+  ): Promise<{ error: string | null }> {
+    try {
+      // 1. Actualizar el reporte con case_id y status 'in_progress'
+      const { error: updateError } = await supabase
+        .from('reports')
+        .update({
+          case_id: caseId,
+          status: 'in_progress',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reportId);
+
+      if (updateError) {
+        return { error: updateError.message };
+      }
+
+      // 2. Registrar en Audit Log
+      await supabase.from('audit_log').insert({
+        institution_id: institutionId,
+        entity_type: 'case',
+        entity_id: caseId,
+        action: 'report_linked_to_case',
+        performed_by: performedBy,
+        details: {
+          report_id: reportId,
+        },
+      });
+
+      return { error: null };
+    } catch (err: any) {
+      return { error: err.message || 'Error al vincular el reporte al caso.' };
     }
   },
 };

@@ -50,9 +50,9 @@ export default function AuthorityCaseDetailScreen() {
       case 'open':
         return { label: 'Abierto', bg: '#EFF6FF', text: '#2563EB' };
       case 'under_investigation':
-        return { label: 'En Investigación', bg: '#FEF3C7', text: '#D97706' };
+        return { label: 'En seguimiento', bg: '#FEF3C7', text: '#D97706' };
       case 'resolved':
-        return { label: 'Resuelto / Finalizado', bg: '#DCFCE7', text: '#16A34A' };
+        return { label: 'Finalizado', bg: '#DCFCE7', text: '#16A34A' };
       default:
         return { label: status, bg: '#F1F5F9', text: '#475569' };
     }
@@ -113,7 +113,7 @@ export default function AuthorityCaseDetailScreen() {
         Alert.alert('Error', error);
       } else {
         setResolveModalVisible(false);
-        Alert.alert('Caso Resuelto', 'El caso ha sido concluido formalmente y el reporte asociado ha pasado a estado Finalizado.');
+        Alert.alert('Caso Finalizado', 'El caso ha sido concluido formalmente y el reporte asociado ha pasado a estado Finalizado.');
         loadCaseData();
       }
     } finally {
@@ -169,7 +169,7 @@ export default function AuthorityCaseDetailScreen() {
               style={styles.actionBtn}
             />
             <Button
-              title="✓ Resolver Caso"
+              title="✓ Finalizar Caso"
               variant="outline"
               onPress={() => setResolveModalVisible(true)}
               style={styles.actionBtn}
@@ -185,30 +185,57 @@ export default function AuthorityCaseDetailScreen() {
         )}
       </Card>
 
-      {/* Reporte Original Vinculado */}
+      {/* Reportes Vinculados */}
       <Card style={styles.card}>
-        <Text style={styles.sectionTitle}>Reporte Vinculado</Text>
-        <Text style={styles.reportDetail}>
-          <Text style={styles.bold}>Estudiante:</Text> {caseItem.report?.student?.first_name} {caseItem.report?.student?.last_name} (DNI: {caseItem.report?.student?.dni || 'S/D'})
+        <Text style={styles.sectionTitle}>
+          {caseItem.linked_reports && caseItem.linked_reports.length > 1
+            ? `Reportes Vinculados (${caseItem.linked_reports.length})`
+            : 'Reporte Vinculado'}
         </Text>
-        {caseItem.report?.course && (
-          <Text style={styles.reportDetail}>
-            <Text style={styles.bold}>Curso:</Text> {caseItem.report.course.year}° "{caseItem.report.course.division}" ({caseItem.report.course.shift})
-          </Text>
-        )}
-        <Text style={styles.reportDetail}>
-          <Text style={styles.bold}>Situación:</Text> {caseItem.report?.situation_type}
-        </Text>
-        <Text style={styles.reportDetail}>
-          <Text style={styles.bold}>Hecho relatado:</Text> {caseItem.report?.description}
-        </Text>
+        {(caseItem.linked_reports && caseItem.linked_reports.length > 0
+          ? caseItem.linked_reports
+          : caseItem.report
+          ? [caseItem.report]
+          : []
+        ).map((rep, idx) => (
+          <View
+            key={rep.id}
+            style={
+              idx > 0
+                ? {
+                    marginTop: 12,
+                    paddingTop: 12,
+                    borderTopWidth: 1,
+                    borderTopColor: '#E2E8F0',
+                  }
+                : undefined
+            }
+          >
+            <Text style={styles.reportDetail}>
+              <Text style={styles.bold}>Estudiante:</Text> {rep.student?.first_name}{' '}
+              {rep.student?.last_name} (DNI: {rep.student?.dni || 'S/D'})
+            </Text>
+            {rep.course && (
+              <Text style={styles.reportDetail}>
+                <Text style={styles.bold}>Curso:</Text> {rep.course.year}° "{rep.course.division}"{' '}
+                ({rep.course.shift})
+              </Text>
+            )}
+            <Text style={styles.reportDetail}>
+              <Text style={styles.bold}>Situación:</Text> {rep.situation_type}
+            </Text>
+            <Text style={styles.reportDetail}>
+              <Text style={styles.bold}>Hecho relatado:</Text> {rep.description}
+            </Text>
 
-        <Button
-          title="Ver Reporte y Evidencia"
-          variant="outline"
-          onPress={() => router.push(`/(authority)/reports/${caseItem.report_id}` as any)}
-          style={styles.viewReportBtn}
-        />
+            <Button
+              title="Ver Reporte y Evidencia"
+              variant="outline"
+              onPress={() => router.push(`/(authority)/reports/${rep.id}` as any)}
+              style={styles.viewReportBtn}
+            />
+          </View>
+        ))}
       </Card>
 
       {/* Actas Digitales Labradas */}
@@ -252,17 +279,17 @@ export default function AuthorityCaseDetailScreen() {
         )}
       </Card>
 
-      {/* Modal para Resolver Caso */}
+      {/* Modal para Finalizar Caso */}
       <Modal visible={resolveModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <Card style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Resolución y Cierre de Caso</Text>
+            <Text style={styles.modalTitle}>Finalización y Cierre de Caso</Text>
             <Text style={styles.modalSubtitle}>
               Ingresa las conclusiones, acuerdos pedagógicos alcanzados y medidas de seguimiento acordadas.
             </Text>
 
             <Input
-              label="Resumen de Resolución / Acuerdos *"
+              label="Resumen de Finalización / Acuerdos *"
               placeholder="Ej: Se realizaron las entrevistas pertinentes, se suscribió acta de compromiso de convivencia y se deriva a taller de integración..."
               value={resolutionSummary}
               onChangeText={setResolutionSummary}
@@ -278,7 +305,7 @@ export default function AuthorityCaseDetailScreen() {
                 style={styles.modalBtn}
               />
               <Button
-                title="Confirmar Resolución"
+                title="Confirmar Finalización"
                 onPress={handleConfirmResolve}
                 style={styles.modalBtn}
                 disabled={resolving}

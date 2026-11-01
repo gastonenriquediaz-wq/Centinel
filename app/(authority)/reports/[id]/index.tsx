@@ -20,8 +20,9 @@ import { Input } from '../../../../src/components/ui/Input';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { ReportsService } from '../../../../src/services/reports.service';
 import { MessagesService } from '../../../../src/services/messages.service';
+import { CasesService } from '../../../../src/services/cases.service';
 import { useReportsStore } from '../../../../src/store/reports.store';
-import { Report, ReportStatus } from '../../../../src/types/database.types';
+import { Report, ReportStatus, Case } from '../../../../src/types/database.types';
 
 export default function AuthorityReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,6 +38,12 @@ export default function AuthorityReportDetailScreen() {
   const [closeReason, setCloseReason] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isFirstOpenedNow, setIsFirstOpenedNow] = useState(false);
+
+  // Modal para vincular a caso existente
+  const [linkModalVisible, setLinkModalVisible] = useState(false);
+  const [availableCases, setAvailableCases] = useState<Case[]>([]);
+  const [loadingCases, setLoadingCases] = useState(false);
+  const [linkingCaseId, setLinkingCaseId] = useState<string | null>(null);
 
   const loadReport = async () => {
     try {
@@ -200,6 +207,61 @@ export default function AuthorityReportDetailScreen() {
     }
   };
 
+  const handleOpenLinkModal = async () => {
+    if (!profile?.institution_id) return;
+    setLinkModalVisible(true);
+    setLoadingCases(true);
+    try {
+      const { data, error } = await CasesService.getInstitutionCases(profile.institution_id);
+      if (!error && data) {
+        // Filtramos casos activos (abiertos o en investigación)
+        const active = data.filter((c) => c.status !== 'resolved');
+        setAvailableCases(active);
+      } else {
+        setAvailableCases([]);
+      }
+    } finally {
+      setLoadingCases(false);
+    }
+  };
+
+  const handleConfirmLinkCase = (caseItem: Case) => {
+    if (!report || !profile) return;
+    Alert.alert(
+      'Vincular reporte a caso',
+      `¿Deseás vincular este reporte al caso institucional "${caseItem.title}"?\n\nEl reporte pasará a estar en seguimiento bajo este caso.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Vincular caso',
+          onPress: async () => {
+            setLinkingCaseId(caseItem.id);
+            try {
+              const { error } = await CasesService.linkReportToCase(
+                report.id,
+                caseItem.id,
+                profile.id,
+                profile.institution_id
+              );
+              if (error) {
+                Alert.alert('Error', error);
+              } else {
+                setLinkModalVisible(false);
+                Alert.alert(
+                  'Reporte vinculado',
+                  `El reporte ha sido vinculado exitosamente al caso "${caseItem.title}".`
+                );
+                loadReport();
+              }
+            } finally {
+              setLinkingCaseId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -325,24 +387,38 @@ export default function AuthorityReportDetailScreen() {
 
           {/* Botones de acción según el estado */}
           {report.status === 'sent' && (
-            <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={[styles.actionBtnFilled, updating && { opacity: 0.6 }]}
-                onPress={handleSetInProgress}
-                disabled={updating}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="play" size={13} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.actionBtnFilledText}>Iniciar seguimiento</Text>
-              </TouchableOpacity>
+            <View>
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  style={[styles.actionBtnFilled, updating && { opacity: 0.6 }]}
+                  onPress={handleSetInProgress}
+                  disabled={updating}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="play" size={13} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.actionBtnFilledText}>Iniciar seguimiento</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionBtnOutline, updating && { opacity: 0.6 }]}
+                  onPress={() => setCloseModalVisible(true)}
+                  disabled={updating}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.actionBtnOutlineCenteredText}>
+                    {'Cerrar sin apertura\nde caso'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               <TouchableOpacity
-                style={[styles.actionBtnOutline, updating && { opacity: 0.6 }]}
-                onPress={() => setCloseModalVisible(true)}
+                style={styles.linkExistingCaseBtn}
+                onPress={handleOpenLinkModal}
                 disabled={updating}
                 activeOpacity={0.8}
               >
-                <Text style={styles.actionBtnOutlineText}>Cerrar sin apertura de caso</Text>
+                <Ionicons name="link-outline" size={16} color="#1E3A8A" style={{ marginRight: 6 }} />
+                <Text style={styles.linkExistingCaseBtnText}>Vincular a caso existente</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -359,25 +435,39 @@ export default function AuthorityReportDetailScreen() {
                   <Text style={styles.caseLinkedBtnText}>Ver caso vinculado</Text>
                 </TouchableOpacity>
               ) : (
-                <View style={styles.actionsRow}>
-                  <TouchableOpacity
-                    style={styles.actionBtnFilled}
-                    onPress={() =>
-                      router.push(`/(authority)/cases/new?reportId=${report.id}` as any)
-                    }
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="folder-open" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.actionBtnFilledText}>Abrir caso formal</Text>
-                  </TouchableOpacity>
+                <View>
+                  <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                      style={styles.actionBtnFilled}
+                      onPress={() =>
+                        router.push(`/(authority)/cases/new?reportId=${report.id}` as any)
+                      }
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="folder-open" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.actionBtnFilledText}>Crear caso</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.actionBtnOutline}
+                      onPress={() => setCloseModalVisible(true)}
+                      disabled={updating}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.actionBtnOutlineCenteredText}>
+                        {'Cerrar sin apertura\nde caso'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
 
                   <TouchableOpacity
-                    style={styles.actionBtnOutline}
-                    onPress={() => setCloseModalVisible(true)}
+                    style={styles.linkExistingCaseBtn}
+                    onPress={handleOpenLinkModal}
                     disabled={updating}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.actionBtnOutlineText}>Cerrar sin caso</Text>
+                    <Ionicons name="link-outline" size={16} color="#1E3A8A" style={{ marginRight: 6 }} />
+                    <Text style={styles.linkExistingCaseBtnText}>Vincular a caso existente</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -581,6 +671,115 @@ export default function AuthorityReportDetailScreen() {
           </Card>
         </View>
       </Modal>
+
+      {/* MODAL: VINCULAR A CASO EXISTENTE */}
+      <Modal
+        visible={linkModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLinkModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Card style={styles.modalCardWide}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Vincular a caso existente</Text>
+                <Text style={styles.modalSubtitle}>
+                  Seleccioná el caso institucional abierto o en seguimiento al que corresponde este reporte.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setLinkModalVisible(false)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={22} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingCases ? (
+              <View style={{ paddingVertical: 30, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#1E3A8A" />
+                <Text style={{ marginTop: 10, color: '#64748B', fontSize: 13 }}>
+                  Cargando casos institucionales...
+                </Text>
+              </View>
+            ) : availableCases.length === 0 ? (
+              <View style={styles.emptyCasesBox}>
+                <Ionicons name="folder-open-outline" size={40} color="#94A3B8" />
+                <Text style={styles.emptyCasesTitle}>No hay casos activos</Text>
+                <Text style={styles.emptyCasesText}>
+                  Actualmente no existen otros casos abiertos o en seguimiento en tu institución. Podés crear uno nuevo con el botón "Crear caso".
+                </Text>
+                <Button
+                  title="Entendido"
+                  variant="outline"
+                  onPress={() => setLinkModalVisible(false)}
+                  style={{ marginTop: 14 }}
+                />
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 380, marginTop: 10 }} showsVerticalScrollIndicator={false}>
+                {availableCases.map((c) => {
+                  const isCurrentLinking = linkingCaseId === c.id;
+                  return (
+                    <TouchableOpacity
+                      key={c.id}
+                      style={styles.caseSelectionCard}
+                      onPress={() => handleConfirmLinkCase(c)}
+                      disabled={!!linkingCaseId}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.caseSelectionHeader}>
+                        <Text style={styles.caseSelectionTitle} numberOfLines={2}>
+                          {c.title}
+                        </Text>
+                        <View style={styles.caseSelectionBadge}>
+                          <Text style={styles.caseSelectionBadgeText}>
+                            {c.status === 'under_investigation' ? 'En seguimiento' : 'Abierto'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.caseSelectionMetaRow}>
+                        <Ionicons name="shield-checkmark-outline" size={13} color="#2563EB" />
+                        <Text style={styles.caseSelectionMetaText} numberOfLines={1}>
+                          {c.protocol_level || 'Protocolo institucional'}
+                        </Text>
+                      </View>
+
+                      {c.report && (
+                        <View style={styles.caseSelectionMetaRow}>
+                          <Ionicons name="person-outline" size={13} color="#64748B" />
+                          <Text style={styles.caseSelectionMetaSub} numberOfLines={1}>
+                            Iniciado por:{' '}
+                            {c.report.student
+                              ? `${c.report.student.first_name} ${c.report.student.last_name}`
+                              : 'Estudiante'}
+                          </Text>
+                        </View>
+                      )}
+
+                      <View style={styles.caseSelectionActionRow}>
+                        <Text style={styles.caseSelectionActionText}>
+                          {isCurrentLinking ? 'Vinculando...' : 'Tocar para vincular a este caso'}
+                        </Text>
+                        <Ionicons name="chevron-forward" size={14} color="#1E3A8A" />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            <Button
+              title="Cancelar"
+              variant="outline"
+              onPress={() => setLinkModalVisible(false)}
+              style={{ marginTop: 12 }}
+            />
+          </Card>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -744,7 +943,8 @@ const styles = StyleSheet.create({
     borderColor: '#1E3A8A',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 11,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
     borderRadius: 10,
   },
   actionBtnOutlineText: {
@@ -752,6 +952,29 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  actionBtnOutlineCenteredText: {
+    color: '#1E3A8A',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 15,
+  },
+  linkExistingCaseBtn: {
+    marginTop: 8,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.5,
+    borderColor: '#1E3A8A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 11,
+    borderRadius: 10,
+  },
+  linkExistingCaseBtnText: {
+    color: '#1E3A8A',
+    fontSize: 13,
+    fontWeight: '700',
   },
   closedReasonBox: {
     marginTop: 12,
@@ -912,6 +1135,101 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     padding: 20,
+  },
+  modalCardWide: {
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    maxHeight: '85%',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  caseSelectionCard: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  caseSelectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 6,
+  },
+  caseSelectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    flex: 1,
+  },
+  caseSelectionBadge: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  caseSelectionBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#1D4ED8',
+  },
+  caseSelectionMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 4,
+  },
+  caseSelectionMetaText: {
+    fontSize: 12,
+    color: '#2563EB',
+    fontWeight: '600',
+  },
+  caseSelectionMetaSub: {
+    fontSize: 11.5,
+    color: '#64748B',
+  },
+  caseSelectionActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#EEF2F6',
+  },
+  caseSelectionActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E3A8A',
+  },
+  emptyCasesBox: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  emptyCasesTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  emptyCasesText: {
+    fontSize: 12.5,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 17,
   },
   modalTitle: {
     fontSize: 18,

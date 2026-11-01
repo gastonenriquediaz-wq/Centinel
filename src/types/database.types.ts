@@ -144,6 +144,7 @@ export interface Case {
   updated_at: string;
   // Joins opcionales
   report?: Report;
+  linked_reports?: Report[];
   creator?: Profile;
   acts?: CaseAct[];
 }
