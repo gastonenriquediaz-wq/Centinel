@@ -90,7 +90,7 @@ type ParticipantRole =
   | 'Docente'
   | 'Estudiante'
   | 'Familiar / Tutor'
-  | 'Gabinete / EOE'
+  | 'Gabinete'
   | 'Otro';
 
 interface StructuredParticipant {
@@ -228,7 +228,7 @@ export default function NewCaseActScreen() {
         return { bg: '#E0F2FE', text: '#0284C7' };
       case 'Familiar / Tutor':
         return { bg: '#FEF3C7', text: '#D97706' };
-      case 'Gabinete / EOE':
+      case 'Gabinete':
         return { bg: '#F3E8FF', text: '#7C3AED' };
       case 'Docente':
         return { bg: '#DCFCE7', text: '#16A34A' };
@@ -330,11 +330,15 @@ export default function NewCaseActScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Stack.Screen
         options={{
-          title: 'Registrar Actuación Institucional',
+          headerTitle: () => (
+            <Text style={styles.headerTitleText}>
+              {'Registrar Actuación\nInstitucional'}
+            </Text>
+          ),
+          headerTitleAlign: 'center',
           headerBackTitle: 'Expediente',
           headerStyle: { backgroundColor: '#1E3A8A' },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontWeight: '700' },
         }}
       />
 
@@ -381,7 +385,7 @@ export default function NewCaseActScreen() {
         {/* Fecha y Hora en 2 columnas */}
         <View style={styles.rowTwoCols}>
           <View style={styles.col}>
-            <Text style={styles.fieldLabel}>Fecha de la actuación *</Text>
+            <Text style={styles.fieldLabel}>Fecha de la actuación</Text>
             <View style={styles.inputWithIcon}>
               <Ionicons name="calendar-outline" size={18} color="#64748B" style={styles.inputIcon} />
               <TextInput
@@ -394,7 +398,7 @@ export default function NewCaseActScreen() {
           </View>
 
           <View style={styles.col}>
-            <Text style={styles.fieldLabel}>Hora *</Text>
+            <Text style={styles.fieldLabel}>Hora</Text>
             <View style={styles.inputWithIcon}>
               <Ionicons name="time-outline" size={18} color="#64748B" style={styles.inputIcon} />
               <TextInput
@@ -473,7 +477,7 @@ export default function NewCaseActScreen() {
                 'Familiar / Tutor',
                 'Directivo',
                 'Docente',
-                'Gabinete / EOE',
+                'Gabinete',
                 'Otro',
               ] as ParticipantRole[]
             ).map((r) => {
@@ -588,6 +592,13 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     backgroundColor: '#F8FAFC',
     gap: 16,
+  },
+  headerTitleText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 19,
   },
   card: {
     padding: 16,
