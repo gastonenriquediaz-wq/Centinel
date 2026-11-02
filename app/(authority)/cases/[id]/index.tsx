@@ -155,7 +155,6 @@ export default function AuthorityCaseDetailScreen() {
           <View style={[styles.badge, { backgroundColor: badge.bg }]}>
             <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
           </View>
-          <Text style={styles.protocolBadge}>Nivel: {caseItem.protocol_level}</Text>
         </View>
 
         <Text style={styles.caseTitle}>{caseItem.title}</Text>

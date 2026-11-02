@@ -95,7 +95,8 @@ export const CasesService = {
             student:profiles!reports_student_id_fkey(*),
             course:courses(*)
           ),
-          creator:profiles!cases_created_by_fkey(*)
+          creator:profiles!cases_created_by_fkey(*),
+          acts:case_acts(id)
         `)
         .eq('institution_id', institutionId)
         .order('created_at', { ascending: false });

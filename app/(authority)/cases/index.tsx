@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { useAuthStore } from '../../../src/store/auth.store';
@@ -30,6 +32,7 @@ export default function AuthorityCasesList() {
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<CaseFilterType>(
     filter === 'active'
       ? 'open'
@@ -60,7 +63,6 @@ export default function AuthorityCasesList() {
       );
       if (!error && data) {
         if (selectedFilter === 'active') {
-          // Filtra los casos 'open' y 'under_investigation' (no resueltos)
           setCases(data.filter((c) => c.status !== 'resolved'));
         } else {
           setCases(data);
@@ -108,6 +110,32 @@ export default function AuthorityCasesList() {
     }
   };
 
+  // Filtrado reactivo por buscador (estudiante o tipo de caso)
+  const filteredCases = useMemo(() => {
+    let result = [...cases];
+
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter((c) => {
+        const titleMatch = (c.title || '').toLowerCase().includes(q);
+        const situationMatch = (c.report?.situation_type || '').toLowerCase().includes(q);
+        const studentFullName = `${c.report?.student?.first_name || ''} ${c.report?.student?.last_name || ''}`.toLowerCase();
+        const studentDni = (c.report?.student?.dni || '').toLowerCase();
+        const course = `${c.report?.course?.year || ''} ${c.report?.course?.division || ''}`.toLowerCase();
+
+        return (
+          titleMatch ||
+          situationMatch ||
+          studentFullName.includes(q) ||
+          studentDni.includes(q) ||
+          course.includes(q)
+        );
+      });
+    }
+
+    return result;
+  }, [cases, searchQuery]);
+
   return (
     <View style={styles.container}>
       <Stack.Screen
@@ -122,6 +150,24 @@ export default function AuthorityCasesList() {
         <Text style={styles.subtitle}>
           Seguimiento formal de protocolos escolares y actas
         </Text>
+
+        {/* Buscador superior: "Buscar por estudiante o tipo de caso" */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={20} color="#64748B" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por estudiante o tipo de caso"
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearBtn}>
+              <Ionicons name="close-circle" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Filtros */}
@@ -157,23 +203,41 @@ export default function AuthorityCasesList() {
           <Card style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>No hay casos registrados</Text>
             <Text style={styles.emptyText}>
-              Para abrir un caso formal de protocolo, selecciona un reporte en la bandeja de "Recepción de Reportes" y pulsa "Abrir Caso Formal".
+              Para abrir un caso formal de protocolo, seleccioná un reporte en la bandeja de "Reportes recibidos" y pulsá "Crear caso".
             </Text>
             <Button
-              title="Ir a Recepción de Reportes"
+              title="Ir a Reportes recibidos"
               onPress={() => router.push('/(authority)/reports')}
+              style={styles.emptyBtn}
+            />
+          </Card>
+        </View>
+      ) : filteredCases.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Card style={styles.emptyCard}>
+            <Ionicons name="search-outline" size={32} color="#94A3B8" style={{ marginBottom: 8 }} />
+            <Text style={styles.emptyTitle}>Sin resultados de búsqueda</Text>
+            <Text style={styles.emptyText}>
+              No se encontraron casos que coincidan con "{searchQuery}". Probá buscar por nombre de estudiante o tipo de situación.
+            </Text>
+            <Button
+              title="Limpiar búsqueda"
+              variant="outline"
+              onPress={() => setSearchQuery('')}
               style={styles.emptyBtn}
             />
           </Card>
         </View>
       ) : (
         <FlatList
-          data={cases}
+          data={filteredCases}
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => {
             const badge = getStatusBadge(item.status);
+            const actsCount = item.acts?.length || 0;
+
             return (
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -192,8 +256,10 @@ export default function AuthorityCasesList() {
                   </View>
 
                   <View style={styles.infoRow}>
-                    <Text style={styles.protocolBadge}>Nivel: {item.protocol_level}</Text>
-                    <Text style={styles.dateText}>Apertura: {formatDate(item.created_at)}</Text>
+                    <View style={styles.dateRow}>
+                      <Ionicons name="calendar-outline" size={14} color="#64748B" style={styles.dateIcon} />
+                      <Text style={styles.dateText}>Apertura: {formatDate(item.created_at)}</Text>
+                    </View>
                   </View>
 
                   {item.report?.student && (
@@ -206,6 +272,21 @@ export default function AuthorityCasesList() {
                   <Text style={styles.situationText} numberOfLines={1}>
                     Hecho: {item.report?.situation_type || 'N/A'}
                   </Text>
+
+                  {/* Indicador de Actas al final del caso */}
+                  <View style={styles.actasBar}>
+                    <View style={styles.actasBarLeft}>
+                      <Ionicons name="document-text-outline" size={15} color="#334155" />
+                      <Text style={styles.actasBarText}>
+                        {actsCount === 0
+                          ? 'Sin actas'
+                          : actsCount === 1
+                          ? '1 acta'
+                          : `${actsCount} actas`}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
+                  </View>
                 </Card>
               </TouchableOpacity>
             );
@@ -224,7 +305,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   title: {
     fontSize: 22,
@@ -235,6 +316,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     marginTop: 2,
+    marginBottom: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    paddingVertical: 0,
+  },
+  clearBtn: {
+    padding: 4,
   },
   filterRow: {
     paddingVertical: 8,
@@ -297,18 +401,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
-  protocolBadge: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1E3A8A',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateIcon: {
+    marginRight: 6,
   },
   dateText: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: '#64748B',
+    fontWeight: '500',
   },
   studentText: {
     fontSize: 13,
@@ -319,6 +422,28 @@ const styles = StyleSheet.create({
   situationText: {
     fontSize: 12,
     color: '#64748B',
+  },
+  actasBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginTop: 10,
+  },
+  actasBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actasBarText: {
+    fontSize: 13,
+    color: '#334155',
+    fontWeight: '600',
   },
   centerContainer: {
     flex: 1,
