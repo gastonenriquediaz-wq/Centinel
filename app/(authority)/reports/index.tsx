@@ -20,12 +20,14 @@ import { MessagesService } from '../../../src/services/messages.service';
 import { useReportsStore } from '../../../src/store/reports.store';
 import { Report, ReportStatus } from '../../../src/types/database.types';
 
-type FilterType = 'all' | 'sent' | 'in_progress' | 'closed_no_case' | 'finalized';
+type FilterType = 'all' | 'sent' | 'in_progress' | 'with_case' | 'without_case' | 'closed_no_case' | 'finalized';
 
 const FILTER_TABS: { label: string; value: FilterType }[] = [
   { label: 'Todos', value: 'all' },
   { label: 'Enviado', value: 'sent' },
   { label: 'En seguimiento', value: 'in_progress' },
+  { label: 'Con caso', value: 'with_case' },
+  { label: 'Sin caso', value: 'without_case' },
   { label: 'Cerrados', value: 'closed_no_case' },
   { label: 'Finalizados', value: 'finalized' },
 ];
@@ -42,13 +44,13 @@ export default function AuthorityReportsList() {
 
   const { filter } = useLocalSearchParams<{ filter?: string }>();
   const [selectedFilter, setSelectedFilter] = useState<FilterType>(
-    filter && ['sent', 'in_progress', 'closed_no_case', 'finalized', 'all'].includes(filter)
+    filter && ['sent', 'in_progress', 'with_case', 'without_case', 'closed_no_case', 'finalized', 'all'].includes(filter)
       ? (filter as FilterType)
       : 'all'
   );
 
   useEffect(() => {
-    if (filter && ['sent', 'in_progress', 'closed_no_case', 'finalized', 'all'].includes(filter)) {
+    if (filter && ['sent', 'in_progress', 'with_case', 'without_case', 'closed_no_case', 'finalized', 'all'].includes(filter)) {
       setSelectedFilter(filter as FilterType);
     }
   }, [filter]);
@@ -128,9 +130,15 @@ export default function AuthorityReportsList() {
   const filteredAndSortedReports = useMemo(() => {
     let result = [...reports];
 
-    // 1. Filtro por estado
+    // 1. Filtro por estado / caso vinculado
     if (selectedFilter !== 'all') {
-      result = result.filter((r) => r.status === selectedFilter);
+      if (selectedFilter === 'with_case') {
+        result = result.filter((r) => !!r.case_id);
+      } else if (selectedFilter === 'without_case') {
+        result = result.filter((r) => !r.case_id);
+      } else {
+        result = result.filter((r) => r.status === selectedFilter);
+      }
     }
 
     // 2. Filtro por buscador: estudiante o curso
@@ -336,18 +344,31 @@ export default function AuthorityReportsList() {
                   </View>
                 )}
 
-                {/* Título de la situación y badge de estado */}
+                {/* Título de la situación y badges de estado y caso */}
                 <View style={styles.cardHeaderRow}>
                   <Text style={styles.situationTitle}>{item.situation_type}</Text>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: badge.bg, borderColor: badge.border },
-                    ]}
-                  >
-                    <Text style={[styles.statusBadgeText, { color: badge.text }]}>
-                      {badge.label}
-                    </Text>
+                  <View style={styles.badgesRightGroup}>
+                    {item.case_id ? (
+                      <View style={styles.caseLinkedBadge}>
+                        <Ionicons name="folder-open" size={11} color="#1D4ED8" style={{ marginRight: 3 }} />
+                        <Text style={styles.caseLinkedBadgeText}>Con caso</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.noCaseBadge}>
+                        <Ionicons name="document-text-outline" size={11} color="#64748B" style={{ marginRight: 3 }} />
+                        <Text style={styles.noCaseBadgeText}>Sin caso</Text>
+                      </View>
+                    )}
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        { backgroundColor: badge.bg, borderColor: badge.border },
+                      ]}
+                    >
+                      <Text style={[styles.statusBadgeText, { color: badge.text }]}>
+                        {badge.label}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
@@ -457,6 +478,24 @@ export default function AuthorityReportsList() {
                   </View>
                 )}
               </TouchableOpacity>
+
+              {/* Botón de acceso directo al expediente del caso vinculado */}
+              {item.case_id && (
+                <TouchableOpacity
+                  style={styles.caseDirectBar}
+                  onPress={() => router.push(`/(authority)/cases/${item.case_id}` as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.caseDirectLeft}>
+                    <Ionicons name="folder-open" size={15} color="#15803D" />
+                    <Text style={styles.caseDirectText}>Expediente del caso vinculado</Text>
+                  </View>
+                  <View style={styles.caseDirectRight}>
+                    <Text style={styles.caseDirectActionText}>Ver caso</Text>
+                    <Ionicons name="arrow-forward" size={13} color="#15803D" />
+                  </View>
+                </TouchableOpacity>
+              )}
             </Card>
           );
         }}
@@ -605,6 +644,75 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 8,
     marginBottom: 8,
+  },
+  badgesRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
+  caseLinkedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  caseLinkedBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#1D4ED8',
+  },
+  noCaseBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  noCaseBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  caseDirectBar: {
+    marginTop: 8,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  caseDirectLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  caseDirectText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  caseDirectRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  caseDirectActionText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#15803D',
   },
   situationTitle: {
     fontSize: 15.5,
