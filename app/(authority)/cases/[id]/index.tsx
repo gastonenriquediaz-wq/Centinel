@@ -70,20 +70,44 @@ export default function AuthorityCaseDetailScreen() {
     }
   };
 
-  const getActTypeLabel = (type: ActType) => {
+  const getActTypeLabel = (type: ActType, title?: string) => {
+    if (title) {
+      const t = title.toLowerCase();
+      if (t.includes('observación') || t.includes('seguimiento')) {
+        return 'Observación o seguimiento del caso';
+      }
+      if (t.includes('convivencia')) {
+        return 'Intervención de convivencia escolar';
+      }
+      if (t.includes('padres') || t.includes('familiar') || t.includes('responsable')) {
+        return 'Reunión con familiares o responsables';
+      }
+      if (t.includes('derivación') || t.includes('gabinete') || t.includes('eoe') || t.includes('organismo')) {
+        return 'Derivación a equipo u organismo competente';
+      }
+      if (t.includes('sanción') || t.includes('medida')) {
+        return 'Medida institucional adoptada';
+      }
+      if (t.includes('entrevista') || t.includes('estudiante')) {
+        return 'Entrevista individual a estudiante';
+      }
+      if (t.includes('otra') || t.includes('actuación')) {
+        return 'Otra actuación institucional';
+      }
+    }
     switch (type) {
       case 'interview_student':
-        return 'Entrevista a estudiante';
+        return 'Entrevista individual a estudiante';
       case 'interview_parents':
         return 'Reunión con familiares o responsables';
       case 'mediation':
-        return 'Acta de mediación / diálogo';
+        return 'Intervención de convivencia escolar';
       case 'psychological_referral':
-        return 'Derivación Gabinete / EOE';
+        return 'Derivación a equipo u organismo competente';
       case 'disciplinary_measure':
-        return 'Medida pedagógica de reparación';
+        return 'Medida institucional adoptada';
       case 'closure_agreement':
-        return 'Acuerdo de convivencia';
+        return 'Observación o seguimiento del caso';
       default:
         return type;
     }
@@ -377,7 +401,7 @@ export default function AuthorityCaseDetailScreen() {
             >
               <View style={styles.actTopRow}>
                 <View style={styles.actTypeBadge}>
-                  <Text style={styles.actTypeBadgeText}>{getActTypeLabel(act.act_type)}</Text>
+                  <Text style={styles.actTypeBadgeText}>{getActTypeLabel(act.act_type, act.title)}</Text>
                 </View>
                 <Text style={styles.actDateText}>{formatDate(act.occurred_at)}</Text>
               </View>

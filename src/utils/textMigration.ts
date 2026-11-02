@@ -1,4 +1,4 @@
-import { Report, Case } from '../types/database.types';
+import { Report, Case, ActType } from '../types/database.types';
 
 /**
  * Mapeo de términos antiguos de situaciones a la nueva redacción simplificada
@@ -46,6 +46,53 @@ export function migrateFrequencyText(text: string | null | undefined): string {
   updated = updated.replace(/Ocurre\s*de\s*forma\s*continua\s*\/\s*diaria/gi, 'Ocurre todos o casi todos los días');
 
   return updated;
+}
+
+/**
+ * Obtiene la etiqueta institucional descriptiva para un tipo de actuación
+ */
+export function getActTypeLabel(type?: string, title?: string): string {
+  if (title) {
+    const t = title.toLowerCase();
+    if (t.includes('observación') || t.includes('seguimiento')) {
+      return 'Observación o seguimiento del caso';
+    }
+    if (t.includes('convivencia')) {
+      return 'Intervención de convivencia escolar';
+    }
+    if (t.includes('padres') || t.includes('familiar') || t.includes('responsable')) {
+      return 'Reunión con familiares o responsables';
+    }
+    if (t.includes('derivación') || t.includes('gabinete') || t.includes('eoe') || t.includes('organismo')) {
+      return 'Derivación a equipo u organismo competente';
+    }
+    if (t.includes('sanción') || t.includes('medida')) {
+      return 'Medida institucional adoptada';
+    }
+    if (t.includes('entrevista') || t.includes('estudiante')) {
+      return 'Entrevista individual a estudiante';
+    }
+    if (t.includes('otra') || t.includes('actuación')) {
+      return 'Otra actuación institucional';
+    }
+  }
+
+  switch (type) {
+    case 'interview_student':
+      return 'Entrevista individual a estudiante';
+    case 'interview_parents':
+      return 'Reunión con familiares o responsables';
+    case 'mediation':
+      return 'Intervención de convivencia escolar';
+    case 'psychological_referral':
+      return 'Derivación a equipo u organismo competente';
+    case 'disciplinary_measure':
+      return 'Medida institucional adoptada';
+    case 'closure_agreement':
+      return 'Observación o seguimiento del caso';
+    default:
+      return type || 'Actuación institucional';
+  }
 }
 
 /**
