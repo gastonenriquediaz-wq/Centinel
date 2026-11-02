@@ -11,6 +11,7 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
+  PanResponder,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -65,9 +66,9 @@ export default function StudentRegisterScreen() {
 
   // Modal para selección de fecha de nacimiento
   const [dateModalVisible, setDateModalVisible] = useState(false);
-  const [tempDay, setTempDay] = useState('');
-  const [tempMonth, setTempMonth] = useState('05');
-  const [tempYear, setTempYear] = useState('2008');
+  const [tempDay, setTempDay] = useState<number>(0); // 0 muestra "00"
+  const [tempMonth, setTempMonth] = useState<string>('05');
+  const [tempYear, setTempYear] = useState<number>(2000);
 
   const MONTHS = [
     { label: 'Enero', value: '01' },
@@ -83,6 +84,86 @@ export default function StudentRegisterScreen() {
     { label: 'Noviembre', value: '11' },
     { label: 'Diciembre', value: '12' },
   ];
+
+  const getDaysInMonth = (monthStr: string, yearNum: number) => {
+    const m = parseInt(monthStr, 10);
+    if (isNaN(m) || m < 1 || m > 12) return 31;
+    return new Date(yearNum || 2000, m, 0).getDate();
+  };
+
+  const dayRef = React.useRef(tempDay);
+  dayRef.current = tempDay;
+  const yearRef = React.useRef(tempYear);
+  yearRef.current = tempYear;
+  const monthRef = React.useRef(tempMonth);
+  monthRef.current = tempMonth;
+
+  // Desplazamiento gestual para Día (deslizar abajo incrementa, deslizar arriba decrementa)
+  const dayPanResponder = React.useMemo(() => {
+    let startVal = 0;
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 2,
+      onPanResponderGrant: () => {
+        startVal = dayRef.current;
+      },
+      onPanResponderMove: (_, gesture) => {
+        const step = 12; // píxeles por unidad
+        const diff = Math.floor(gesture.dy / step);
+        const maxDays = getDaysInMonth(monthRef.current, yearRef.current);
+        let target = (startVal === 0 ? 1 : startVal) + diff;
+        if (target < 1) target = 1;
+        if (target > maxDays) target = maxDays;
+        setTempDay(target);
+      },
+    });
+  }, []);
+
+  // Desplazamiento gestual para Año (deslizar abajo incrementa, deslizar arriba decrementa)
+  const yearPanResponder = React.useMemo(() => {
+    let startVal = 2000;
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 2,
+      onPanResponderGrant: () => {
+        startVal = yearRef.current;
+      },
+      onPanResponderMove: (_, gesture) => {
+        const step = 8; // píxeles por año
+        const diff = Math.floor(gesture.dy / step);
+        const currentYear = new Date().getFullYear();
+        const minYear = currentYear - 100;
+        let target = startVal + diff;
+        if (target < minYear) target = minYear;
+        if (target > currentYear) target = currentYear;
+        setTempYear(target);
+      },
+    });
+  }, []);
+
+  const openDateModal = () => {
+    if (birthDate) {
+      const parts = birthDate.split('-');
+      if (parts.length === 3) {
+        setTempYear(parseInt(parts[0], 10) || 2000);
+        setTempMonth(parts[1] || '05');
+        setTempDay(parseInt(parts[2], 10) || 0);
+      }
+    } else {
+      setTempDay(0); // Inicia en 00
+      setTempMonth('05');
+      setTempYear(2000); // Inicia en 2000
+    }
+    setDateModalVisible(true);
+  };
+
+  const handleSelectMonth = (monthVal: string) => {
+    setTempMonth(monthVal);
+    const maxDays = getDaysInMonth(monthVal, tempYear);
+    if (tempDay > maxDays) {
+      setTempDay(maxDays);
+    }
+  };
 
   const handleValidateToken = async (token: string) => {
     if (lockoutRemaining > 0) {
@@ -158,21 +239,28 @@ export default function StudentRegisterScreen() {
   };
 
   const handleConfirmDate = () => {
-    const dayNum = parseInt(tempDay, 10);
-    const yearNum = parseInt(tempYear, 10);
+    const currentYear = new Date().getFullYear();
+    const minYear = currentYear - 100;
+    const maxDays = getDaysInMonth(tempMonth, tempYear);
 
-    if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) {
-      Alert.alert('Día inválido', 'Por favor ingresá un día válido entre 1 y 31.');
+    if (tempDay === 0 || tempDay < 1 || tempDay > maxDays) {
+      Alert.alert(
+        'Día requerido',
+        `Por favor seleccioná un día válido entre 1 y ${maxDays} desplazando el control o usando las flechas.`
+      );
       return;
     }
 
-    if (isNaN(yearNum) || yearNum < 1990 || yearNum > 2020) {
-      Alert.alert('Año inválido', 'Por favor ingresá un año válido entre 1990 y 2020.');
+    if (tempYear < minYear || tempYear > currentYear) {
+      Alert.alert(
+        'Año inválido',
+        `El año de nacimiento debe estar entre ${minYear} y ${currentYear} (la edad no puede superar los 100 años ni ser una fecha futura).`
+      );
       return;
     }
 
-    const formattedDay = dayNum.toString().padStart(2, '0');
-    const isoDate = `${yearNum}-${tempMonth}-${formattedDay}`;
+    const formattedDay = tempDay.toString().padStart(2, '0');
+    const isoDate = `${tempYear}-${tempMonth}-${formattedDay}`;
     setBirthDate(isoDate);
     setDateModalVisible(false);
   };
@@ -502,7 +590,7 @@ export default function StudentRegisterScreen() {
             <Text style={styles.fieldLabel}>Fecha de nacimiento *</Text>
             <TouchableOpacity
               style={styles.inputContainer}
-              onPress={() => setDateModalVisible(true)}
+              onPress={openDateModal}
               activeOpacity={0.7}
             >
               <Ionicons name="calendar-outline" size={18} color="#64748B" style={styles.fieldIcon} />
@@ -652,7 +740,10 @@ export default function StudentRegisterScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Fecha de nacimiento</Text>
-              <TouchableOpacity onPress={() => setDateModalVisible(false)}>
+              <TouchableOpacity
+                onPress={() => setDateModalVisible(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Ionicons name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
@@ -662,19 +753,44 @@ export default function StudentRegisterScreen() {
             </Text>
 
             <View style={styles.dateInputsRow}>
-              <View style={styles.dateColSmall}>
+              {/* Selector táctil de Día */}
+              <View style={styles.dateColDay}>
                 <Text style={styles.dateInputLabel}>Día</Text>
-                <TextInput
-                  style={styles.dateNumInput}
-                  placeholder="14"
-                  keyboardType="numeric"
-                  maxLength={2}
-                  value={tempDay}
-                  onChangeText={setTempDay}
-                />
+                <View style={styles.stepperContainer}>
+                  <TouchableOpacity
+                    style={styles.stepperBtn}
+                    onPress={() => {
+                      const maxDays = getDaysInMonth(tempMonth, tempYear);
+                      setTempDay((prev) => (prev === 0 ? 1 : Math.min(maxDays, prev + 1)));
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="chevron-up" size={18} color="#1E3A8A" />
+                  </TouchableOpacity>
+
+                  <View {...dayPanResponder.panHandlers} style={styles.stepperValueBox}>
+                    <Text style={styles.stepperValueText}>
+                      {tempDay === 0 ? '00' : tempDay.toString().padStart(2, '0')}
+                    </Text>
+                    <Text style={styles.stepperDragHint}>↕ deslizar</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.stepperBtn}
+                    onPress={() => {
+                      setTempDay((prev) => Math.max(1, (prev === 0 ? 1 : prev) - 1));
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="chevron-down" size={18} color="#1E3A8A" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              <View style={styles.dateColLarge}>
+              {/* Selector de Mes (Cuadrícula de 12 meses) */}
+              <View style={styles.dateColMonth}>
                 <Text style={styles.dateInputLabel}>Mes</Text>
                 <View style={styles.monthChipsWrap}>
                   {MONTHS.map((m) => {
@@ -683,7 +799,8 @@ export default function StudentRegisterScreen() {
                       <TouchableOpacity
                         key={m.value}
                         style={[styles.monthChip, isSelected && styles.monthChipSelected]}
-                        onPress={() => setTempMonth(m.value)}
+                        onPress={() => handleSelectMonth(m.value)}
+                        activeOpacity={0.7}
                       >
                         <Text style={[styles.monthChipText, isSelected && styles.monthChipTextSelected]}>
                           {m.label.substring(0, 3)}
@@ -694,16 +811,40 @@ export default function StudentRegisterScreen() {
                 </View>
               </View>
 
-              <View style={styles.dateColSmall}>
+              {/* Selector táctil de Año */}
+              <View style={styles.dateColYear}>
                 <Text style={styles.dateInputLabel}>Año</Text>
-                <TextInput
-                  style={styles.dateNumInput}
-                  placeholder="2008"
-                  keyboardType="numeric"
-                  maxLength={4}
-                  value={tempYear}
-                  onChangeText={setTempYear}
-                />
+                <View style={styles.stepperContainer}>
+                  <TouchableOpacity
+                    style={styles.stepperBtn}
+                    onPress={() => {
+                      const currentYear = new Date().getFullYear();
+                      setTempYear((prev) => Math.min(currentYear, prev + 1));
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="chevron-up" size={18} color="#1E3A8A" />
+                  </TouchableOpacity>
+
+                  <View {...yearPanResponder.panHandlers} style={styles.stepperValueBox}>
+                    <Text style={styles.stepperValueText}>{tempYear}</Text>
+                    <Text style={styles.stepperDragHint}>↕ deslizar</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.stepperBtn}
+                    onPress={() => {
+                      const currentYear = new Date().getFullYear();
+                      const minYear = currentYear - 100;
+                      setTempYear((prev) => Math.max(minYear, prev - 1));
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="chevron-down" size={18} color="#1E3A8A" />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 
@@ -1101,31 +1242,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 16,
+    alignItems: 'flex-start',
   },
-  dateColSmall: {
-    width: 60,
+  dateColDay: {
+    width: 66,
   },
-  dateColLarge: {
+  dateColMonth: {
     flex: 1,
+  },
+  dateColYear: {
+    width: 76,
   },
   dateInputLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 6,
     textAlign: 'center',
   },
-  dateNumInput: {
+  stepperContainer: {
+    alignItems: 'center',
+    gap: 3,
+  },
+  stepperBtn: {
+    width: '100%',
+    height: 30,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
     borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperValueBox: {
+    width: '100%',
+    height: 52,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
     borderColor: '#CBD5E1',
     borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    textAlign: 'center',
-    fontSize: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 2,
+  },
+  stepperValueText: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#0F172A',
-    backgroundColor: '#F8FAFC',
+  },
+  stepperDragHint: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginTop: 1,
   },
   monthChipsWrap: {
     flexDirection: 'row',
