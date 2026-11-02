@@ -51,17 +51,20 @@ export default function LoginScreen() {
           setStatusBlockedInfo(pendingMsg);
           Alert.alert('Cuenta pendiente de aprobación', pendingMsg, [{ text: 'Entendido' }]);
         } else if (profile.account_status === 'rejected') {
-          setStatusBlockedInfo(
-            'Tu solicitud de registro ha sido RECHAZADA por las autoridades institucionales.'
-          );
+          const rejectedMsg =
+            'Tu solicitud de registro ha sido RECHAZADA por las autoridades institucionales.';
+          setStatusBlockedInfo(rejectedMsg);
+          Alert.alert('Acceso no permitido', rejectedMsg, [{ text: 'Entendido' }]);
         } else if (profile.account_status === 'suspended') {
-          setStatusBlockedInfo(
-            'Tu cuenta ha sido SUSPENDIDA temporalmente por las autoridades de la institución.'
-          );
+          const suspendedMsg =
+            'Tu cuenta ha sido SUSPENDIDA temporalmente por las autoridades de la institución educativa. Por favor, acercate a Preceptoría o Dirección.';
+          setStatusBlockedInfo(suspendedMsg);
+          Alert.alert('Cuenta suspendida', suspendedMsg, [{ text: 'Entendido' }]);
         } else if (profile.account_status === 'inactive') {
-          setStatusBlockedInfo(
-            'Esta cuenta se encuentra DESACTIVADA. Comunicate con las autoridades de tu colegio.'
-          );
+          const inactiveMsg =
+            'Esta cuenta se encuentra DESACTIVADA. Comunicate con las autoridades de tu colegio.';
+          setStatusBlockedInfo(inactiveMsg);
+          Alert.alert('Cuenta inactiva', inactiveMsg, [{ text: 'Entendido' }]);
         }
         return;
       }

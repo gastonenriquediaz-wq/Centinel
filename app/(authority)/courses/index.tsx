@@ -6,8 +6,10 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { router, useFocusEffect, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { useAuthStore } from '../../../src/store/auth.store';
@@ -89,17 +91,34 @@ export default function CoursesListScreen() {
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <Card style={styles.courseCard}>
-              <View style={styles.courseInfo}>
-                <Text style={styles.courseName}>
-                  {item.year}° "{item.division}"
-                </Text>
+              <TouchableOpacity
+                style={styles.courseInfo}
+                onPress={() => router.push(`/(authority)/courses/${item.id}/students`)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.courseTitleRow}>
+                  <Text style={styles.courseName}>
+                    {item.year}° "{item.division}"
+                  </Text>
+                  <View style={styles.viewBadge}>
+                    <Ionicons name="people" size={13} color="#1E3A8A" style={{ marginRight: 3 }} />
+                    <Text style={styles.viewBadgeText}>Ver alumnos</Text>
+                  </View>
+                </View>
+
                 <Text style={styles.courseDetails}>
                   Turno: {item.shift} · Ciclo: {item.school_year}
                 </Text>
                 <Text style={styles.courseCap}>
                   Capacidad estimada: {item.estimated_students} estudiantes
                 </Text>
-              </View>
+
+                <View style={styles.manageStudentsLink}>
+                  <Text style={styles.manageStudentsLinkText}>
+                    Gestionar estudiantes del curso →
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
               <View style={styles.actionCol}>
                 <Button
@@ -181,11 +200,31 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  courseTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   courseName: {
     fontSize: 22,
     fontWeight: '800',
     color: '#1E3A8A',
-    marginBottom: 4,
+  },
+  viewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  viewBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1E3A8A',
   },
   courseDetails: {
     fontSize: 13,
@@ -196,6 +235,15 @@ const styles = StyleSheet.create({
   courseCap: {
     fontSize: 12,
     color: '#64748B',
+    marginBottom: 6,
+  },
+  manageStudentsLink: {
+    marginTop: 2,
+  },
+  manageStudentsLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
   },
   actionCol: {
     width: 142,
