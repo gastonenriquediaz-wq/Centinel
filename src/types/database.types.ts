@@ -117,6 +117,8 @@ export interface AuditLog {
   performed_by: string;
   details: any;
   created_at: string;
+  // Join opcional
+  performer?: Profile;
 }
 
 export interface ReportMessage {
@@ -129,6 +131,16 @@ export interface ReportMessage {
   created_at: string;
   // Join opcional
   sender?: Profile;
+}
+
+export interface CaseInvolvedStudent {
+  id: string;
+  name: string;
+  role: string;
+  course?: string;
+  notes?: string;
+  source: 'report_reporter' | 'report_aggressor' | 'report_witness' | 'manual';
+  addedAt?: string;
 }
 
 export interface Case {
@@ -147,6 +159,7 @@ export interface Case {
   linked_reports?: Report[];
   creator?: Profile;
   acts?: CaseAct[];
+  involved_students?: CaseInvolvedStudent[];
 }
 
 export interface CaseAct {

@@ -8,15 +8,15 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  TextInput,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
-import { Input } from '../../../../src/components/ui/Input';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { CasesService } from '../../../../src/services/cases.service';
-import { Case, CaseStatus, ActType } from '../../../../src/types/database.types';
+import { Case, CaseStatus, ActType, CaseInvolvedStudent } from '../../../../src/types/database.types';
 
 export default function AuthorityCaseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,6 +28,17 @@ export default function AuthorityCaseDetailScreen() {
   // Modal para resolución de caso
   const [resolveModalVisible, setResolveModalVisible] = useState(false);
   const [resolutionSummary, setResolutionSummary] = useState('');
+
+  // Modal para agregar estudiante
+  const [addStudentModalVisible, setAddStudentModalVisible] = useState(false);
+  const [studentName, setStudentName] = useState('');
+  const [studentRole, setStudentRole] = useState('Estudiante señalado por la agresión');
+  const [studentCourse, setStudentCourse] = useState('');
+  const [studentNotes, setStudentNotes] = useState('');
+  const [savingStudent, setSavingStudent] = useState(false);
+
+  // Modal para ver detalle de estudiante
+  const [selectedStudent, setSelectedStudent] = useState<CaseInvolvedStudent | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -62,17 +73,17 @@ export default function AuthorityCaseDetailScreen() {
   const getActTypeLabel = (type: ActType) => {
     switch (type) {
       case 'interview_student':
-        return 'Entrevista a Estudiante';
+        return 'Entrevista a estudiante';
       case 'interview_parents':
-        return 'Reunión con Padres / Tutores';
+        return 'Reunión con familiares o responsables';
       case 'mediation':
-        return 'Acta de Mediación / Diálogo';
+        return 'Acta de mediación / diálogo';
       case 'psychological_referral':
         return 'Derivación Gabinete / EOE';
       case 'disciplinary_measure':
-        return 'Medida Pedagógica / Sanción';
+        return 'Medida pedagógica de reparación';
       case 'closure_agreement':
-        return 'Acuerdo de Convivencia y Cierre';
+        return 'Acuerdo de convivencia';
       default:
         return type;
     }
@@ -96,7 +107,10 @@ export default function AuthorityCaseDetailScreen() {
   const handleConfirmResolve = async () => {
     if (!caseItem || !profile) return;
     if (!resolutionSummary.trim() || resolutionSummary.trim().length < 15) {
-      Alert.alert('Resumen insuficiente', 'Por favor ingresa las conclusiones y acuerdos alcanzados (mínimo 15 caracteres).');
+      Alert.alert(
+        'Resumen insuficiente',
+        'Por favor ingresá las conclusiones y acuerdos alcanzados (mínimo 15 caracteres).'
+      );
       return;
     }
 
@@ -114,11 +128,52 @@ export default function AuthorityCaseDetailScreen() {
         Alert.alert('Error', error);
       } else {
         setResolveModalVisible(false);
-        Alert.alert('Caso Finalizado', 'El caso ha sido concluido formalmente y el reporte asociado ha pasado a estado Finalizado.');
+        Alert.alert(
+          'Caso Finalizado',
+          'El caso ha sido concluido formalmente y el reporte asociado ha pasado a estado Finalizado.'
+        );
         loadCaseData();
       }
     } finally {
       setResolving(false);
+    }
+  };
+
+  const handleSaveStudent = async () => {
+    if (!caseItem || !profile) return;
+    if (!studentName.trim()) {
+      Alert.alert('Campo obligatorio', 'Por favor ingresá el nombre y apellido del estudiante.');
+      return;
+    }
+
+    setSavingStudent(true);
+    try {
+      const { error } = await CasesService.addInvolvedStudentToCase({
+        institution_id: profile.institution_id,
+        case_id: caseItem.id,
+        performed_by: profile.id,
+        name: studentName.trim(),
+        role: studentRole,
+        course: studentCourse.trim() || undefined,
+        notes: studentNotes.trim() || undefined,
+      });
+
+      if (error) {
+        Alert.alert('Error', error);
+      } else {
+        setAddStudentModalVisible(false);
+        setStudentName('');
+        setStudentCourse('');
+        setStudentNotes('');
+        setStudentRole('Estudiante señalado por la agresión');
+        Alert.alert(
+          'Estudiante incorporado',
+          'El estudiante ha sido añadido al expediente y quedó registrado en el historial de operaciones.'
+        );
+        loadCaseData();
+      }
+    } finally {
+      setSavingStudent(false);
     }
   };
 
@@ -140,6 +195,15 @@ export default function AuthorityCaseDetailScreen() {
   }
 
   const badge = getStatusBadge(caseItem.status);
+  const reportsList =
+    caseItem.linked_reports && caseItem.linked_reports.length > 0
+      ? caseItem.linked_reports
+      : caseItem.report
+      ? [caseItem.report]
+      : [];
+
+  const involvedStudents = caseItem.involved_students || [];
+  const actsList = caseItem.acts || [];
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -147,10 +211,26 @@ export default function AuthorityCaseDetailScreen() {
         options={{
           title: 'Expediente de Caso',
           headerBackTitle: 'Casos',
+          headerStyle: { backgroundColor: '#1E3A8A' },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: { fontWeight: '700' },
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert(
+                  'Expediente Institucional',
+                  'Este expediente consolida las actuaciones, estudiantes involucrados y reportes conforme a las normativas de convivencia escolar.'
+                )
+              }
+              style={{ marginRight: 4 }}
+            >
+              <Ionicons name="settings-sharp" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          ),
         }}
       />
 
-      {/* Cabecera del Caso */}
+      {/* 1. Cabecera del Caso */}
       <Card style={styles.headerCard}>
         <View style={styles.badgeRow}>
           <View style={[styles.badge, { backgroundColor: badge.bg }]}>
@@ -159,21 +239,29 @@ export default function AuthorityCaseDetailScreen() {
         </View>
 
         <Text style={styles.caseTitle}>{caseItem.title}</Text>
-        <Text style={styles.caseDate}>Apertura: {formatDate(caseItem.created_at)}</Text>
+
+        <View style={styles.dateRow}>
+          <Ionicons name="calendar-outline" size={16} color="#64748B" />
+          <Text style={styles.caseDate}>Apertura: {formatDate(caseItem.created_at)}</Text>
+        </View>
 
         {caseItem.status !== 'resolved' && (
           <View style={styles.actionButtonsRow}>
-            <Button
-              title="➕ Labrar Nueva Acta"
+            <TouchableOpacity
+              style={styles.primaryActionButton}
               onPress={() => router.push(`/(authority)/cases/${caseItem.id}/acts/new` as any)}
-              style={styles.actionBtn}
-            />
-            <Button
-              title="✓ Finalizar Caso"
-              variant="outline"
+            >
+              <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.primaryActionText}>Registrar actuación</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryActionButton}
               onPress={() => setResolveModalVisible(true)}
-              style={styles.actionBtn}
-            />
+            >
+              <Ionicons name="checkmark-outline" size={18} color="#1E3A8A" />
+              <Text style={styles.secondaryActionText}>Finalizar caso</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -185,142 +273,381 @@ export default function AuthorityCaseDetailScreen() {
         )}
       </Card>
 
-      {/* Reportes Vinculados */}
-      <Card style={styles.card}>
-        <Text style={styles.sectionTitle}>
-          {caseItem.linked_reports && caseItem.linked_reports.length > 1
-            ? `Reportes Vinculados (${caseItem.linked_reports.length})`
-            : 'Reporte Vinculado'}
-        </Text>
-        {(caseItem.linked_reports && caseItem.linked_reports.length > 0
-          ? caseItem.linked_reports
-          : caseItem.report
-          ? [caseItem.report]
-          : []
-        ).map((rep, idx) => (
-          <View
-            key={rep.id}
-            style={
-              idx > 0
-                ? {
-                    marginTop: 12,
-                    paddingTop: 12,
-                    borderTopWidth: 1,
-                    borderTopColor: '#E2E8F0',
-                  }
-                : undefined
-            }
-          >
-            <Text style={styles.reportDetail}>
-              <Text style={styles.bold}>Estudiante:</Text> {rep.student?.first_name}{' '}
-              {rep.student?.last_name} (DNI: {rep.student?.dni || 'S/D'})
-            </Text>
-            {rep.course && (
-              <Text style={styles.reportDetail}>
-                <Text style={styles.bold}>Curso:</Text> {rep.course.year}° "{rep.course.division}"{' '}
-                ({rep.course.shift})
-              </Text>
-            )}
-            <Text style={styles.reportDetail}>
-              <Text style={styles.bold}>Situación:</Text> {rep.situation_type}
-            </Text>
-            <Text style={styles.reportDetail}>
-              <Text style={styles.bold}>Hecho relatado:</Text> {rep.description}
-            </Text>
-
-            <Button
-              title="Ver Reporte y Evidencia"
-              variant="outline"
-              onPress={() => router.push(`/(authority)/reports/${rep.id}` as any)}
-              style={styles.viewReportBtn}
-            />
+      {/* 2. Reportes vinculados */}
+      <Card style={styles.sectionCard}>
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionIconWrap}>
+            <Ionicons name="document-text-outline" size={18} color="#2563EB" />
           </View>
+          <Text style={styles.sectionTitle}>Reportes vinculados</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>
+              {reportsList.length} {reportsList.length === 1 ? 'reporte' : 'reportes'}
+            </Text>
+          </View>
+        </View>
+
+        {reportsList.map((rep) => (
+          <TouchableOpacity
+            key={rep.id}
+            style={styles.itemCard}
+            onPress={() => router.push(`/(authority)/reports/${rep.id}` as any)}
+          >
+            <View style={styles.itemIconWrap}>
+              <Ionicons name="document-text-outline" size={20} color="#2563EB" />
+            </View>
+            <View style={styles.itemContent}>
+              <Text style={styles.itemTitle}>{rep.situation_type}</Text>
+              <Text style={styles.itemSubtitle}>
+                {rep.student?.first_name} {rep.student?.last_name}
+                {rep.course ? ` · ${rep.course.year}.° ${rep.course.division} (${rep.course.shift})` : ''}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
         ))}
       </Card>
 
-      {/* Actas Digitales Labradas */}
-      <Card style={styles.card}>
-        <View style={styles.actsHeader}>
-          <Text style={styles.sectionTitle}>
-            Actas Digitales Labradas ({caseItem.acts?.length || 0})
-          </Text>
-          {caseItem.status !== 'resolved' && (
-            <TouchableOpacity
-              onPress={() => router.push(`/(authority)/cases/${caseItem.id}/acts/new` as any)}
-            >
-              <Text style={styles.addActLink}>+ Nueva Acta</Text>
-            </TouchableOpacity>
-          )}
+      {/* 3. Estudiantes involucrados */}
+      <Card style={styles.sectionCard}>
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionIconWrap}>
+            <Ionicons name="people-outline" size={18} color="#2563EB" />
+          </View>
+          <Text style={styles.sectionTitle}>Estudiantes involucrados</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>
+              {involvedStudents.length} {involvedStudents.length === 1 ? 'estudiante' : 'estudiantes'}
+            </Text>
+          </View>
         </View>
 
-        {!caseItem.acts || caseItem.acts.length === 0 ? (
-          <Text style={styles.emptyActsText}>
-            Aún no se han registrado actas para este caso. Puedes labrar actas de entrevistas, reuniones con padres o derivaciones pedagógicas.
-          </Text>
-        ) : (
-          <View style={styles.actsList}>
-            {caseItem.acts.map((act) => (
-              <TouchableOpacity
-                key={act.id}
-                style={styles.actItem}
-                activeOpacity={0.7}
-                onPress={() => router.push(`/(authority)/cases/${caseItem.id}/acts/${act.id}` as any)}
-              >
-                <View style={styles.actHeaderRow}>
-                  <Text style={styles.actTypeTag}>{getActTypeLabel(act.act_type)}</Text>
-                  <Text style={styles.actDate}>{formatDate(act.occurred_at)}</Text>
-                </View>
-                <Text style={styles.actTitle}>{act.title}</Text>
-                <Text style={styles.actParticipants}>
-                  <Text style={styles.bold}>Participantes:</Text> {act.participants}
-                </Text>
-                <Text style={styles.actContent} numberOfLines={3}>{act.content}</Text>
-                <Text style={styles.actAuthor}>
-                  Labrada por: {act.creator?.first_name} {act.creator?.last_name} ({act.creator?.position || 'Autoridad'})
-                </Text>
-                <View style={styles.actLinkRow}>
-                  <Text style={styles.actLinkText}>Ver acta completa</Text>
-                  <Ionicons name="chevron-forward" size={14} color="#1E3A8A" />
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+        {involvedStudents.map((st) => (
+          <TouchableOpacity
+            key={st.id}
+            style={styles.itemCard}
+            onPress={() => setSelectedStudent(st)}
+          >
+            <View style={styles.avatarWrap}>
+              <Ionicons name="person-outline" size={20} color="#2563EB" />
+            </View>
+            <View style={styles.itemContent}>
+              <Text style={styles.itemTitle}>{st.name}</Text>
+              <Text style={styles.itemSubtitle}>{st.role}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+        ))}
+
+        <TouchableOpacity
+          style={styles.addActionButton}
+          onPress={() => setAddStudentModalVisible(true)}
+        >
+          <Ionicons name="add" size={18} color="#1E3A8A" />
+          <Text style={styles.addActionText}>Agregar estudiante</Text>
+        </TouchableOpacity>
       </Card>
 
-      {/* Modal para Finalizar Caso */}
-      <Modal visible={resolveModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <Card style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Finalización y Cierre de Caso</Text>
-            <Text style={styles.modalSubtitle}>
-              Ingresa las conclusiones, acuerdos pedagógicos alcanzados y medidas de seguimiento acordadas.
+      {/* 4. Actuaciones y seguimiento */}
+      <Card style={styles.sectionCard}>
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionIconWrap}>
+            <Ionicons name="clipboard-outline" size={18} color="#2563EB" />
+          </View>
+          <Text style={styles.sectionTitle}>Actuaciones y seguimiento</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>
+              {actsList.length} {actsList.length === 1 ? 'actuación' : 'actuaciones'}
             </Text>
+          </View>
+        </View>
 
-            <Input
-              label="Resumen de Finalización / Acuerdos *"
-              placeholder="Ej: Se realizaron las entrevistas pertinentes, se suscribió acta de compromiso de convivencia y se deriva a taller de integración..."
-              value={resolutionSummary}
-              onChangeText={setResolutionSummary}
-              multiline
-              numberOfLines={5}
-            />
+        {actsList.length === 0 ? (
+          <Text style={styles.emptyText}>
+            Aún no se han registrado actuaciones formales en este expediente.
+          </Text>
+        ) : (
+          actsList.map((act) => (
+            <TouchableOpacity
+              key={act.id}
+              style={styles.actCard}
+              onPress={() =>
+                router.push(`/(authority)/cases/${caseItem.id}/acts/${act.id}` as any)
+              }
+            >
+              <View style={styles.actTopRow}>
+                <View style={styles.actTypeBadge}>
+                  <Text style={styles.actTypeBadgeText}>{getActTypeLabel(act.act_type)}</Text>
+                </View>
+                <Text style={styles.actDateText}>{formatDate(act.occurred_at)}</Text>
+              </View>
 
-            <View style={styles.modalButtonsRow}>
-              <Button
-                title="Cancelar"
-                variant="outline"
-                onPress={() => setResolveModalVisible(false)}
-                style={styles.modalBtn}
-              />
-              <Button
-                title="Confirmar Finalización"
-                onPress={handleConfirmResolve}
-                style={styles.modalBtn}
-                disabled={resolving}
-              />
+              <View style={styles.actTitleRow}>
+                <Text style={styles.actTitle}>{act.title}</Text>
+                <Ionicons name="chevron-forward" size={20} color="#64748B" />
+              </View>
+
+              <Text style={styles.actParticipants}>
+                Participantes: {act.participants || 'Autoridad escolar'}
+              </Text>
+            </TouchableOpacity>
+          ))
+        )}
+
+        <TouchableOpacity
+          style={styles.addActionButton}
+          onPress={() => router.push(`/(authority)/cases/${caseItem.id}/acts/new` as any)}
+        >
+          <Ionicons name="add" size={18} color="#1E3A8A" />
+          <Text style={styles.addActionText}>Registrar nueva actuación</Text>
+        </TouchableOpacity>
+      </Card>
+
+      {/* 5. Historial de operaciones */}
+      <TouchableOpacity
+        style={styles.historyCard}
+        onPress={() => router.push(`/(authority)/cases/${caseItem.id}/history` as any)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.historyIconWrap}>
+          <Ionicons name="time-outline" size={22} color="#2563EB" />
+        </View>
+        <View style={styles.historyContent}>
+          <Text style={styles.historyTitle}>Historial de operaciones</Text>
+          <Text style={styles.historySubtitle}>
+            Consultá la creación del caso, los cambios de estado y otras acciones realizadas.
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#64748B" />
+      </TouchableOpacity>
+
+      {/* 6. Confidencialidad */}
+      <View style={styles.confidentialityCard}>
+        <Ionicons name="information-circle-outline" size={24} color="#1E3A8A" />
+        <View style={styles.confidentialityContent}>
+          <Text style={styles.confidentialityTitle}>Confidencialidad</Text>
+          <Text style={styles.confidentialityText}>
+            La información del caso es de uso institucional y debe resguardar la identidad y el
+            bienestar de los estudiantes, según la normativa vigente.
+          </Text>
+        </View>
+      </View>
+
+      {/* Modal: Agregar estudiante al caso */}
+      <Modal
+        visible={addStudentModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAddStudentModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Agregar estudiante</Text>
+              <TouchableOpacity onPress={() => setAddStudentModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
             </View>
-          </Card>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.fieldLabel}>Nombre y apellido *</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ej. Lucas Fernández"
+                value={studentName}
+                onChangeText={setStudentName}
+              />
+
+              <Text style={styles.fieldLabel}>Rol en la situación *</Text>
+              <View style={styles.roleChipsRow}>
+                {[
+                  'Estudiante señalado por la agresión',
+                  'Estudiante afectado',
+                  'Estudiante que presenció lo sucedido',
+                  'Otro estudiante involucrado',
+                ].map((roleOption) => {
+                  const isSelected = studentRole === roleOption;
+                  return (
+                    <TouchableOpacity
+                      key={roleOption}
+                      style={[
+                        styles.roleChip,
+                        isSelected && styles.roleChipSelected,
+                      ]}
+                      onPress={() => setStudentRole(roleOption)}
+                    >
+                      <Text
+                        style={[
+                          styles.roleChipText,
+                          isSelected && styles.roleChipTextSelected,
+                        ]}
+                      >
+                        {roleOption}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.fieldLabel}>Curso / División (opcional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ej. 3.° B (Mañana)"
+                value={studentCourse}
+                onChangeText={setStudentCourse}
+              />
+
+              <Text style={styles.fieldLabel}>Observación o detalle (opcional)</Text>
+              <TextInput
+                style={[styles.textInput, styles.textArea]}
+                placeholder="Información relevante para el seguimiento institucional..."
+                value={studentNotes}
+                onChangeText={setStudentNotes}
+                multiline
+                numberOfLines={3}
+              />
+
+              <View style={styles.modalButtonsRow}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setAddStudentModalVisible(false)}
+                >
+                  <Text style={styles.modalCancelBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.modalConfirmBtn}
+                  onPress={handleSaveStudent}
+                  disabled={savingStudent}
+                >
+                  {savingStudent ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.modalConfirmBtnText}>Guardar estudiante</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal: Detalle de estudiante */}
+      <Modal
+        visible={!!selectedStudent}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedStudent(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Información del estudiante</Text>
+              <TouchableOpacity onPress={() => setSelectedStudent(null)}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedStudent && (
+              <View style={{ gap: 12 }}>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Nombre y apellido:</Text>
+                  <Text style={styles.detailValue}>{selectedStudent.name}</Text>
+                </View>
+
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Rol en el expediente:</Text>
+                  <Text style={styles.detailValue}>{selectedStudent.role}</Text>
+                </View>
+
+                {selectedStudent.course && (
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Curso / División:</Text>
+                    <Text style={styles.detailValue}>{selectedStudent.course}</Text>
+                  </View>
+                )}
+
+                {selectedStudent.notes && (
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Observación:</Text>
+                    <Text style={styles.detailValue}>{selectedStudent.notes}</Text>
+                  </View>
+                )}
+
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Origen del registro:</Text>
+                  <Text style={styles.detailValue}>
+                    {selectedStudent.source === 'manual'
+                      ? 'Incorporado manualmente por autoridad escolar'
+                      : 'Informado en el reporte de origen'}
+                  </Text>
+                </View>
+
+                <Button
+                  title="Cerrar"
+                  onPress={() => setSelectedStudent(null)}
+                  style={{ marginTop: 12 }}
+                />
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal: Resolución de Caso */}
+      <Modal
+        visible={resolveModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setResolveModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Concluir Caso Formal</Text>
+              <TouchableOpacity onPress={() => setResolveModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalText}>
+                Al finalizar el caso, se dejará constancia formal de los acuerdos, medidas
+                pedagógicas de reparación y compromisos de convivencia acordados entre las partes.
+              </Text>
+
+              <Text style={styles.fieldLabel}>Conclusiones y Acuerdos de Convivencia *</Text>
+              <TextInput
+                style={[styles.textInput, styles.textArea]}
+                placeholder="Detallá los compromisos acordados, mediaciones concluidas y seguimiento pedagógico..."
+                value={resolutionSummary}
+                onChangeText={setResolutionSummary}
+                multiline
+                numberOfLines={4}
+              />
+
+              <View style={styles.modalButtonsRow}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setResolveModalVisible(false)}
+                >
+                  <Text style={styles.modalCancelBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalConfirmBtn, { backgroundColor: '#16A34A' }]}
+                  onPress={handleConfirmResolve}
+                  disabled={resolving}
+                >
+                  {resolving ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.modalConfirmBtnText}>Finalizar caso</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </ScrollView>
@@ -329,139 +656,228 @@ export default function AuthorityCaseDetailScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    padding: 16,
+    paddingBottom: 40,
     backgroundColor: '#F8FAFC',
-    flexGrow: 1,
-    gap: 16,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#F8FAFC',
   },
   errorText: {
     fontSize: 16,
     color: '#EF4444',
-    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
   },
   backBtn: {
-    marginTop: 12,
+    minWidth: 120,
   },
   headerCard: {
     padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
   },
   badgeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 8,
   },
   badge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  protocolBadge: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1E3A8A',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
   },
   caseTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: 'bold',
     color: '#0F172A',
-    marginBottom: 4,
+    marginBottom: 8,
+    lineHeight: 24,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 16,
   },
   caseDate: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginBottom: 12,
+    fontSize: 13,
+    color: '#64748B',
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 8,
+    gap: 12,
   },
-  actionBtn: {
+  primaryActionButton: {
     flex: 1,
+    backgroundColor: '#1E3A8A',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  primaryActionText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  secondaryActionButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#1E3A8A',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  secondaryActionText: {
+    color: '#1E3A8A',
+    fontSize: 13,
+    fontWeight: '700',
   },
   resolutionBox: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#DCFCE7',
-    borderRadius: 6,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 10,
   },
   resolutionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: 'bold',
     color: '#166534',
+    marginBottom: 4,
   },
   resolutionText: {
     fontSize: 13,
-    color: '#14532D',
-    marginTop: 4,
+    color: '#15803D',
     lineHeight: 18,
-    textAlign: 'justify',
   },
-  card: {
+  sectionCard: {
     padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  sectionIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: '#0F172A',
-    marginBottom: 8,
+    flex: 1,
   },
-  reportDetail: {
-    fontSize: 13,
-    color: '#334155',
-    marginBottom: 4,
-    lineHeight: 18,
-    textAlign: 'justify',
+  countBadge: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
-  bold: {
-    fontWeight: '700',
+  countBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0369A1',
   },
-  viewReportBtn: {
-    marginTop: 10,
-  },
-  actsHeader: {
+  itemCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-  },
-  addActLink: {
-    color: '#1E3A8A',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  emptyActsText: {
-    fontSize: 13,
-    color: '#64748B',
-    lineHeight: 18,
-    textAlign: 'justify',
-  },
-  actsList: {
-    gap: 12,
-  },
-  actItem: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 12,
+    marginTop: 10,
   },
-  actHeaderRow: {
+  itemIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  avatarWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  itemContent: {
+    flex: 1,
+  },
+  itemTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#1E293B',
+  },
+  itemSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  addActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  addActionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E3A8A',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 10,
+    fontStyle: 'italic',
+  },
+  actCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+  },
+  actTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -469,85 +885,217 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
-  actTypeTag: {
+  actTypeBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  actTypeBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#1E3A8A',
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    color: '#2563EB',
   },
-  actDate: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  actLinkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginTop: 8,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    gap: 4,
-  },
-  actLinkText: {
+  actDateText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#1E3A8A',
+    color: '#64748B',
+  },
+  actTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   actTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    flex: 1,
   },
   actParticipants: {
-    fontSize: 12,
-    color: '#475569',
-    marginBottom: 6,
-  },
-  actContent: {
     fontSize: 13,
-    color: '#334155',
-    lineHeight: 18,
-    marginBottom: 8,
-    textAlign: 'justify',
-  },
-  actAuthor: {
-    fontSize: 11,
     color: '#64748B',
-    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  historyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+  },
+  historyIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  historyContent: {
+    flex: 1,
+    marginRight: 8,
+  },
+  historyTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  historySubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 3,
+    lineHeight: 18,
+  },
+  confidentialityCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F4F5FD',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+    marginBottom: 20,
+  },
+  confidentialityContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  confidentialityTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#1E293B',
+  },
+  confidentialityText: {
+    fontSize: 13,
+    color: '#475569',
+    marginTop: 4,
+    lineHeight: 18,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
-  modalCard: {
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 20,
-    gap: 12,
+    width: '100%',
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: '#0F172A',
   },
-  modalSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    lineHeight: 18,
-    textAlign: 'justify',
+  modalText: {
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 6,
+    marginTop: 10,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    backgroundColor: '#F8FAFC',
+    color: '#0F172A',
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  roleChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
+  },
+  roleChip: {
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F8FAFC',
+  },
+  roleChipSelected: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#2563EB',
+  },
+  roleChipText: {
+    fontSize: 12,
+    color: '#475569',
+  },
+  roleChipTextSelected: {
+    color: '#2563EB',
+    fontWeight: 'bold',
   },
   modalButtonsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 8,
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 20,
   },
-  modalBtn: {
-    flex: 1,
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  modalCancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  modalConfirmBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    backgroundColor: '#1E3A8A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  detailItem: {
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
   },
 });
