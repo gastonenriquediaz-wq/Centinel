@@ -334,7 +334,25 @@ export default function AuthorityDashboard() {
           <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
         </TouchableOpacity>
 
-        {/* 5. Aprender y prevenir */}
+        {/* 5. Estadísticas y métricas de convivencia */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(authority)/statistics' as any)}
+          style={styles.actionCard}
+        >
+          <View style={[styles.actionIconCircle, { backgroundColor: '#E0E7FF' }]}>
+            <Ionicons name="stats-chart-outline" size={20} color="#4F46E5" />
+          </View>
+          <View style={styles.actionInfo}>
+            <Text style={styles.actionTitle}>Estadísticas de convivencia</Text>
+            <Text style={styles.actionDesc}>
+              Analizar indicadores por tipo de situación, lugares críticos, recurrencia y cursos.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        {/* 6. Aprender y prevenir */}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => router.push('/(authority)/education')}
