@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -85,17 +86,18 @@ const ACT_OPTIONS: ActOption[] = [
   },
 ];
 
-type ParticipantRole =
-  | 'Directivo'
-  | 'Docente'
-  | 'Estudiante'
-  | 'Familiar / Tutor'
-  | 'Gabinete'
-  | 'Otro';
+const DEFAULT_ROLES = [
+  'Estudiante',
+  'Familiar / Tutor',
+  'Directivo',
+  'Docente',
+  'Gabinete',
+  'Otro',
+];
 
 interface StructuredParticipant {
   id: string;
-  role: ParticipantRole;
+  role: string;
   name: string;
 }
 
@@ -132,8 +134,13 @@ export default function NewCaseActScreen() {
 
   // Personas presentes / intervinientes estructurados
   const [participantsList, setParticipantsList] = useState<StructuredParticipant[]>([]);
-  const [newPersonRole, setNewPersonRole] = useState<ParticipantRole>('Estudiante');
+  const [availableRoles, setAvailableRoles] = useState<string[]>(DEFAULT_ROLES);
+  const [newPersonRole, setNewPersonRole] = useState<string>('Estudiante');
   const [newPersonName, setNewPersonName] = useState('');
+
+  // Modal para agregar rol temporal
+  const [customRoleModalVisible, setCustomRoleModalVisible] = useState(false);
+  const [customRoleInput, setCustomRoleInput] = useState('');
 
   // Contenido de la actuación
   const [development, setDevelopment] = useState('');
@@ -161,7 +168,7 @@ export default function NewCaseActScreen() {
   useEffect(() => {
     if (profile && participantsList.length === 0) {
       const currentUserName = `${profile.first_name} ${profile.last_name}`.trim();
-      const currentRole: ParticipantRole =
+      const currentRole =
         profile.position === 'Director' || profile.position === 'Vicedirector'
           ? 'Directivo'
           : 'Docente';
@@ -209,18 +216,31 @@ export default function NewCaseActScreen() {
       return;
     }
 
-    const studentRole: ParticipantRole = 'Estudiante';
     setParticipantsList((prev) => [
       ...prev,
       {
         id: `sug_${Date.now()}_${name}`,
-        role: studentRole,
+        role: 'Estudiante',
         name: `${name} (${roleText})`,
       },
     ]);
   };
 
-  const getRoleBadgeStyle = (role: ParticipantRole) => {
+  const handleSaveCustomRole = () => {
+    const trimmed = customRoleInput.trim();
+    if (!trimmed) {
+      Alert.alert('Campo requerido', 'Por favor ingresá el nombre del cargo o rol.');
+      return;
+    }
+    if (!availableRoles.includes(trimmed)) {
+      setAvailableRoles((prev) => [...prev, trimmed]);
+    }
+    setNewPersonRole(trimmed);
+    setCustomRoleModalVisible(false);
+    setCustomRoleInput('');
+  };
+
+  const getRoleBadgeStyle = (role: string) => {
     switch (role) {
       case 'Directivo':
         return { bg: '#EFF6FF', text: '#1E3A8A' };
@@ -233,7 +253,7 @@ export default function NewCaseActScreen() {
       case 'Docente':
         return { bg: '#DCFCE7', text: '#16A34A' };
       default:
-        return { bg: '#F1F5F9', text: '#475569' };
+        return { bg: '#EDE9FE', text: '#6D28D9' };
     }
   };
 
@@ -331,8 +351,13 @@ export default function NewCaseActScreen() {
       <Stack.Screen
         options={{
           headerTitle: () => (
-            <Text style={styles.headerTitleText}>
-              {'Registrar Actuación\nInstitucional'}
+            <Text
+              style={styles.headerTitleText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              Registrar Actuación Institucional
             </Text>
           ),
           headerTitleAlign: 'center',
@@ -344,7 +369,7 @@ export default function NewCaseActScreen() {
 
       {/* 1. Selector de Tipo de Actuación Institucional */}
       <Card style={styles.card}>
-        <Text style={styles.sectionTitle}>Tipo de actuación institucional *</Text>
+        <Text style={styles.sectionTitle}>Tipo de actuación institucional</Text>
         <Text style={styles.sectionSubtitle}>
           Seleccioná el tipo de actuación que vas a registrar.
         </Text>
@@ -374,7 +399,7 @@ export default function NewCaseActScreen() {
       {/* 2. Formulario de Datos de la Actuación */}
       <Card style={styles.card}>
         {/* Título de la actuación */}
-        <Text style={styles.fieldLabel}>Título de la actuación *</Text>
+        <Text style={styles.fieldLabel}>Título de la actuación</Text>
         <TextInput
           style={styles.textInput}
           placeholder="Ej: Entrevista a estudiante"
@@ -412,7 +437,7 @@ export default function NewCaseActScreen() {
         </View>
 
         {/* Personas presentes / Intervinientes (Estructurado y Ordenado) */}
-        <Text style={styles.fieldLabel}>Personas presentes / Intervinientes *</Text>
+        <Text style={styles.fieldLabel}>Personas presentes / Intervinientes</Text>
         <Text style={styles.fieldHelper}>
           Indicá las personas que participaron (ej.: director/a, preceptor/a, estudiante, familiar, profesional).
         </Text>
@@ -469,18 +494,22 @@ export default function NewCaseActScreen() {
 
         {/* Formulario para agregar nuevo interviniente */}
         <View style={styles.addParticipantBox}>
-          <Text style={styles.addParticipantTitle}>+ Incorporar interviniente:</Text>
+          <View style={styles.addParticipantHeaderRow}>
+            <Text style={styles.addParticipantTitle}>+ Incorporar interviniente:</Text>
+            <TouchableOpacity
+              style={styles.addCustomRoleBtn}
+              onPress={() => {
+                setCustomRoleInput('');
+                setCustomRoleModalVisible(true);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="add" size={18} color="#1E3A8A" />
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.rolePickerRow}>
-            {(
-              [
-                'Estudiante',
-                'Familiar / Tutor',
-                'Directivo',
-                'Docente',
-                'Gabinete',
-                'Otro',
-              ] as ParticipantRole[]
-            ).map((r) => {
+            {availableRoles.map((r) => {
               const isSelected = newPersonRole === r;
               return (
                 <TouchableOpacity
@@ -516,7 +545,7 @@ export default function NewCaseActScreen() {
         </View>
 
         {/* Desarrollo de la actuación */}
-        <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Desarrollo de la actuación *</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Desarrollo de la actuación</Text>
         <Text style={styles.fieldHelper}>
           Registrá lo conversado, la información relevante y las observaciones.
         </Text>
@@ -582,6 +611,53 @@ export default function NewCaseActScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Modal para agregar nuevo rol/cargo temporal */}
+      <Modal
+        visible={customRoleModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCustomRoleModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Nuevo rol / cargo</Text>
+              <TouchableOpacity onPress={() => setCustomRoleModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Ingresá el cargo o rol para esta actuación (ej.: Psicólogo, Asistente social, Abogado). Estará disponible únicamente durante el registro de esta actuación.
+            </Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ej.: Psicólogo"
+              value={customRoleInput}
+              onChangeText={setCustomRoleInput}
+              autoFocus
+            />
+
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setCustomRoleModalVisible(false)}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={handleSaveCustomRole}
+              >
+                <Text style={styles.modalConfirmBtnText}>Guardar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -596,9 +672,9 @@ const styles = StyleSheet.create({
   headerTitleText: {
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 15,
+    fontSize: 14.5,
     textAlign: 'center',
-    lineHeight: 19,
+    maxWidth: 260,
   },
   card: {
     padding: 16,
@@ -803,11 +879,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
+  addParticipantHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   addParticipantTitle: {
     fontSize: 12,
     fontWeight: '700',
     color: '#334155',
-    marginBottom: 6,
+  },
+  addCustomRoleBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   rolePickerRow: {
     flexDirection: 'row',
@@ -902,6 +993,75 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 380,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    backgroundColor: '#F8FAFC',
+    color: '#0F172A',
+    marginBottom: 16,
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  modalCancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  modalConfirmBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    backgroundColor: '#1E3A8A',
+  },
+  modalConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: 'bold',
     color: '#FFFFFF',
   },
 });
