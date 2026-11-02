@@ -20,15 +20,13 @@ import { MessagesService } from '../../../src/services/messages.service';
 import { useReportsStore } from '../../../src/store/reports.store';
 import { Report, ReportStatus } from '../../../src/types/database.types';
 
-type FilterType = 'all' | 'sent' | 'in_progress' | 'with_case' | 'without_case' | 'closed_no_case' | 'finalized';
+type FilterType = 'all' | 'sent' | 'in_progress' | 'closed_no_case' | 'finalized';
 
 const FILTER_TABS: { label: string; value: FilterType }[] = [
   { label: 'Todos', value: 'all' },
   { label: 'Enviado', value: 'sent' },
   { label: 'En seguimiento', value: 'in_progress' },
-  { label: 'Con caso', value: 'with_case' },
-  { label: 'Sin caso', value: 'without_case' },
-  { label: 'Cerrados', value: 'closed_no_case' },
+  { label: 'Cerrado sin apertura de caso', value: 'closed_no_case' },
   { label: 'Finalizados', value: 'finalized' },
 ];
 
@@ -44,13 +42,13 @@ export default function AuthorityReportsList() {
 
   const { filter } = useLocalSearchParams<{ filter?: string }>();
   const [selectedFilter, setSelectedFilter] = useState<FilterType>(
-    filter && ['sent', 'in_progress', 'with_case', 'without_case', 'closed_no_case', 'finalized', 'all'].includes(filter)
+    filter && ['sent', 'in_progress', 'closed_no_case', 'finalized', 'all'].includes(filter)
       ? (filter as FilterType)
       : 'all'
   );
 
   useEffect(() => {
-    if (filter && ['sent', 'in_progress', 'with_case', 'without_case', 'closed_no_case', 'finalized', 'all'].includes(filter)) {
+    if (filter && ['sent', 'in_progress', 'closed_no_case', 'finalized', 'all'].includes(filter)) {
       setSelectedFilter(filter as FilterType);
     }
   }, [filter]);
@@ -118,7 +116,7 @@ export default function AuthorityReportsList() {
       case 'in_progress':
         return { label: 'En seguimiento', bg: '#FEF3C7', border: '#FDE68A', text: '#B45309' };
       case 'closed_no_case':
-        return { label: 'Cerrado', bg: '#F1F5F9', border: '#CBD5E1', text: '#475569' };
+        return { label: 'Cerrado sin apertura de caso', bg: '#F1F5F9', border: '#CBD5E1', text: '#475569' };
       case 'finalized':
         return { label: 'Finalizado', bg: '#DCFCE7', border: '#BBF7D0', text: '#15803D' };
       default:
@@ -130,15 +128,9 @@ export default function AuthorityReportsList() {
   const filteredAndSortedReports = useMemo(() => {
     let result = [...reports];
 
-    // 1. Filtro por estado / caso vinculado
+    // 1. Filtro por estado
     if (selectedFilter !== 'all') {
-      if (selectedFilter === 'with_case') {
-        result = result.filter((r) => !!r.case_id);
-      } else if (selectedFilter === 'without_case') {
-        result = result.filter((r) => !r.case_id);
-      } else {
-        result = result.filter((r) => r.status === selectedFilter);
-      }
+      result = result.filter((r) => r.status === selectedFilter);
     }
 
     // 2. Filtro por buscador: estudiante o curso
@@ -487,13 +479,10 @@ export default function AuthorityReportsList() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.caseDirectLeft}>
-                    <Ionicons name="folder-open" size={15} color="#15803D" />
+                    <Ionicons name="folder-open-outline" size={16} color="#64748B" />
                     <Text style={styles.caseDirectText}>Expediente del caso vinculado</Text>
                   </View>
-                  <View style={styles.caseDirectRight}>
-                    <Text style={styles.caseDirectActionText}>Ver caso</Text>
-                    <Ionicons name="arrow-forward" size={13} color="#15803D" />
-                  </View>
+                  <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
                 </TouchableOpacity>
               )}
             </Card>
@@ -684,11 +673,11 @@ const styles = StyleSheet.create({
   },
   caseDirectBar: {
     marginTop: 8,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: '#E2E8F0',
     borderRadius: 8,
-    paddingVertical: 8,
+    paddingVertical: 7,
     paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -701,18 +690,8 @@ const styles = StyleSheet.create({
   },
   caseDirectText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#15803D',
-  },
-  caseDirectRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  caseDirectActionText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: '#15803D',
+    fontWeight: '600',
+    color: '#334155',
   },
   situationTitle: {
     fontSize: 15.5,
