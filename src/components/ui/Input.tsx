@@ -5,6 +5,8 @@ import {
   TextInput,
   StyleSheet,
   TextInputProps,
+  StyleProp,
+  ViewStyle,
 } from 'react-native';
 
 interface InputProps extends TextInputProps {
@@ -12,6 +14,7 @@ interface InputProps extends TextInputProps {
   error?: string;
   helperText?: string;
   rightAccessory?: React.ReactNode;
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -19,11 +22,12 @@ export const Input: React.FC<InputProps> = ({
   error,
   helperText,
   rightAccessory,
+  containerStyle,
   style,
   ...props
 }) => {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
       {rightAccessory ? (
         <View

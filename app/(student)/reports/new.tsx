@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Card } from '../../../src/components/ui/Card';
 import { Input } from '../../../src/components/ui/Input';
@@ -82,7 +83,8 @@ export default function NewReportScreen() {
     { name: '', courseDivision: '' },
   ]);
 
-  // 3_ ¿Alguien vio lo que pasó? (Testigos opcionales)
+  // 3_ ¿Sabés si alguien más presenció lo sucedido?
+  const [witnessOption, setWitnessOption] = useState<'yes' | 'no' | 'unknown' | ''>('');
   const [witnessesList, setWitnessesList] = useState<string[]>([]);
 
   // 4_ Descripción de lo sucedido
@@ -129,7 +131,14 @@ export default function NewReportScreen() {
     }
   };
 
-  // Manejo de lista dinámica de testigos
+  // Manejo de opción y lista dinámica de personas que presenciaron
+  const handleWitnessOptionChange = (option: 'yes' | 'no' | 'unknown') => {
+    setWitnessOption(option);
+    if (option === 'yes' && witnessesList.length === 0) {
+      setWitnessesList(['']);
+    }
+  };
+
   const handleWitnessChange = (index: number, value: string) => {
     const updated = [...witnessesList];
     updated[index] = value;
@@ -141,7 +150,11 @@ export default function NewReportScreen() {
   };
 
   const removeWitness = (index: number) => {
-    setWitnessesList(witnessesList.filter((_, i) => i !== index));
+    if (witnessesList.length > 1) {
+      setWitnessesList(witnessesList.filter((_, i) => i !== index));
+    } else {
+      setWitnessesList(['']);
+    }
   };
 
   // Selector de multimedia (Paso 3)
@@ -248,15 +261,28 @@ export default function NewReportScreen() {
         return;
       }
 
-      // 2_ Quiénes realizaron las agresiones
+      // 2_ ¿Sabés quién o quiénes realizaron las acciones que querés comunicar?
       if (!aggressorsType) {
-        Alert.alert('Campo requerido', 'Por favor indica si conoces a quiénes realizaron las agresiones.');
+        Alert.alert('Campo requerido', 'Por favor seleccioná si sabés quién o quiénes realizaron las acciones.');
         return;
       }
       if (aggressorsType === 'known') {
         const hasValidAggressor = aggressorsList.some((a) => a.name.trim().length > 0);
         if (!hasValidAggressor) {
-          Alert.alert('Campo requerido', 'Por favor ingresa al menos un nombre, apellido o apodo del agresor.');
+          Alert.alert('Campo requerido', 'Por favor ingresá al menos un nombre, apellido o apodo de las personas involucradas.');
+          return;
+        }
+      }
+
+      // 3_ ¿Sabés si alguien más presenció lo sucedido?
+      if (!witnessOption) {
+        Alert.alert('Campo requerido', 'Por favor indicá si sabés si alguien más presenció lo sucedido.');
+        return;
+      }
+      if (witnessOption === 'yes') {
+        const hasValidWitness = witnessesList.some((w) => w.trim().length > 0);
+        if (!hasValidWitness) {
+          Alert.alert('Campo requerido', 'Por favor ingresá el nombre y/o apellido de la persona que presenció lo sucedido.');
           return;
         }
       }
@@ -309,10 +335,16 @@ export default function NewReportScreen() {
       parts.push(`Agresores: ${validAggressors}`);
     }
 
-    // Testigos
-    const validWitnesses = witnessesList.filter((w) => w.trim().length > 0);
-    if (validWitnesses.length > 0) {
-      parts.push(`Testigos: ${validWitnesses.map((w) => w.trim()).join('; ')}`);
+    // Personas que presenciaron
+    if (witnessOption === 'yes') {
+      const validWitnesses = witnessesList.filter((w) => w.trim().length > 0);
+      if (validWitnesses.length > 0) {
+        parts.push(`Personas que presenciaron: ${validWitnesses.map((w) => w.trim()).join('; ')}`);
+      }
+    } else if (witnessOption === 'no') {
+      parts.push('Personas que presenciaron: No hubo');
+    } else if (witnessOption === 'unknown') {
+      parts.push('Personas que presenciaron: No sé');
     }
 
     return parts.join(' | ');
@@ -550,11 +582,11 @@ export default function NewReportScreen() {
             )}
           </Card>
 
-          {/* 2_ ¿Quiénes participaron en lo sucedido? */}
+          {/* 2_ ¿Sabés quién o quiénes realizaron las acciones que querés comunicar? */}
           <Card style={styles.card}>
-            <Text style={styles.label}>2_ ¿Quiénes participaron en lo sucedido?</Text>
+            <Text style={styles.label}>2_ ¿Sabés quién o quiénes realizaron las acciones que querés comunicar?</Text>
             <Text style={styles.helperTextNotice}>
-              Si conocés a las personas que participaron, podés indicarlas.{"\n"}
+              Si conocés a las personas que realizaron las acciones, podés indicarlas.{"\n"}
               Si no lo sabés, podés marcar la primera opción.
             </Text>
 
@@ -563,7 +595,7 @@ export default function NewReportScreen() {
               onPress={() => setAggressorsType('unknown')}
             >
               <View style={[styles.radioDot, aggressorsType === 'unknown' && styles.radioDotSelected]} />
-              <Text style={styles.radioText}>No sé quiénes participaron</Text>
+              <Text style={styles.radioText}>No sé quiénes fueron</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -571,7 +603,7 @@ export default function NewReportScreen() {
               onPress={() => setAggressorsType('known')}
             >
               <View style={[styles.radioDot, aggressorsType === 'known' && styles.radioDotSelected]} />
-              <Text style={styles.radioText}>Conozco a una o más personas que participaron</Text>
+              <Text style={styles.radioText}>Sí, conozco a una o más personas</Text>
             </TouchableOpacity>
 
             {aggressorsType === 'known' && (
@@ -612,35 +644,115 @@ export default function NewReportScreen() {
             )}
           </Card>
 
-          {/* 3_ ¿Alguien vio lo que pasó? (Testigos) */}
+          {/* 3_ ¿Sabés si alguien más presenció lo sucedido? */}
           <Card style={styles.card}>
-            <Text style={styles.label}>3_ ¿Alguien vio lo que pasó?</Text>
+            <Text style={styles.label}>3_ ¿Sabés si alguien más presenció lo sucedido?</Text>
             <Text style={styles.helperTextNotice}>
-              Si conocés testigos, podés indicarlos. No es obligatorio.
+              Seleccioná una opción para indicar si hubo personas que presenciaron o vieron lo ocurrido.
             </Text>
 
-            {witnessesList.map((witness, index) => (
-              <View key={index} style={styles.witnessRow}>
-                <View style={styles.witnessInputWrapper}>
-                  <Input
-                    label={`Testigo #${index + 1}`}
-                    placeholder="Nombre, apellido o apodo"
-                    value={witness}
-                    onChangeText={(val) => handleWitnessChange(index, val)}
-                  />
-                </View>
-                <TouchableOpacity onPress={() => removeWitness(index)} style={styles.removeWitnessBtn}>
-                  <Text style={styles.removeWitnessText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+            <View style={styles.threeOptionsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.threeOptionsItem,
+                  witnessOption === 'yes' && styles.threeOptionsItemSelected,
+                ]}
+                onPress={() => handleWitnessOptionChange('yes')}
+              >
+                <View
+                  style={[
+                    styles.radioDotSmall,
+                    witnessOption === 'yes' && styles.radioDotSelected,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.threeOptionsText,
+                    witnessOption === 'yes' && styles.threeOptionsTextSelected,
+                  ]}
+                >
+                  Sí
+                </Text>
+              </TouchableOpacity>
 
-            <Button
-              title="+ Agregar testigo"
-              variant="outline"
-              onPress={addWitness}
-              style={styles.addDynamicButton}
-            />
+              <TouchableOpacity
+                style={[
+                  styles.threeOptionsItem,
+                  witnessOption === 'no' && styles.threeOptionsItemSelected,
+                ]}
+                onPress={() => handleWitnessOptionChange('no')}
+              >
+                <View
+                  style={[
+                    styles.radioDotSmall,
+                    witnessOption === 'no' && styles.radioDotSelected,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.threeOptionsText,
+                    witnessOption === 'no' && styles.threeOptionsTextSelected,
+                  ]}
+                >
+                  No
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.threeOptionsItem,
+                  witnessOption === 'unknown' && styles.threeOptionsItemSelected,
+                ]}
+                onPress={() => handleWitnessOptionChange('unknown')}
+              >
+                <View
+                  style={[
+                    styles.radioDotSmall,
+                    witnessOption === 'unknown' && styles.radioDotSelected,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.threeOptionsText,
+                    witnessOption === 'unknown' && styles.threeOptionsTextSelected,
+                  ]}
+                >
+                  No sé
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {witnessOption === 'yes' && (
+              <View style={styles.dynamicListContainer}>
+                {witnessesList.map((witness, index) => (
+                  <View key={index} style={styles.witnessRow}>
+                    <View style={styles.witnessInputWrapper}>
+                      <Input
+                        label={`Persona #${index + 1}`}
+                        placeholder="Nombre y/o apellido"
+                        value={witness}
+                        onChangeText={(val) => handleWitnessChange(index, val)}
+                        containerStyle={styles.noMarginInput}
+                      />
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => removeWitness(index)}
+                      style={styles.removeWitnessBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="close" size={22} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                <Button
+                  title="+ Agregar otra persona"
+                  variant="outline"
+                  onPress={addWitness}
+                  style={styles.addDynamicButton}
+                />
+              </View>
+            )}
           </Card>
 
           {/* 4_ Descripción de lo sucedido */}
@@ -1007,25 +1119,66 @@ const styles = StyleSheet.create({
   addDynamicButton: {
     marginTop: 6,
   },
+  threeOptionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  threeOptionsItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+    gap: 6,
+  },
+  threeOptionsItemSelected: {
+    borderColor: '#1E3A8A',
+    backgroundColor: '#EFF6FF',
+  },
+  threeOptionsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  threeOptionsTextSelected: {
+    color: '#1E3A8A',
+    fontWeight: '700',
+  },
+  radioDotSmall: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#94A3B8',
+  },
   witnessRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: 8,
+    marginBottom: 10,
     gap: 8,
   },
   witnessInputWrapper: {
     flex: 1,
   },
-  removeWitnessBtn: {
-    padding: 12,
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    marginBottom: 2,
+  noMarginInput: {
+    marginBottom: 0,
   },
-  removeWitnessText: {
-    color: '#EF4444',
-    fontSize: 14,
-    fontWeight: '800',
+  removeWitnessBtn: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   rowButtons: {
     flexDirection: 'row',
