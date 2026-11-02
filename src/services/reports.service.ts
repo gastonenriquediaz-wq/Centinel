@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { Report, ReportAttachment, ReportStatus } from '../types/database.types';
+import { migrateReport, migrateReports } from '../utils/textMigration';
 import { File } from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 
@@ -189,7 +190,7 @@ export const ReportsService = {
         }
       }
 
-      return { data: reportsList, error: null };
+      return { data: migrateReports(reportsList), error: null };
     } catch (err: any) {
       return { data: [], error: err.message };
     }
@@ -240,7 +241,7 @@ export const ReportsService = {
         }
       }
 
-      return { data: reportsList, error: null };
+      return { data: migrateReports(reportsList), error: null };
     } catch (err: any) {
       return { data: [], error: err.message };
     }
@@ -281,7 +282,7 @@ export const ReportsService = {
         }
       }
 
-      return { data: report, error: null };
+      return { data: migrateReport(report), error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
     }

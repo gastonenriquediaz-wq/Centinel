@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { Case, CaseAct, CaseStatus, ActType } from '../types/database.types';
+import { migrateCase, migrateCases } from '../utils/textMigration';
 
 export interface CreateCaseInput {
   institution_id: string;
@@ -109,7 +110,7 @@ export const CasesService = {
         return { data: [], error: error.message };
       }
 
-      return { data: (data as Case[]) || [], error: null };
+      return { data: migrateCases((data as Case[]) || []), error: null };
     } catch (err: any) {
       return { data: [], error: err.message };
     }
@@ -167,7 +168,7 @@ export const CasesService = {
         );
       }
 
-      return { data: caseItem, error: null };
+      return { data: migrateCase(caseItem), error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
     }

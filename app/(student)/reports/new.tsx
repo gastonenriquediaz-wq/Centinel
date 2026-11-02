@@ -19,29 +19,31 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { ReportsService, AttachmentInput } from '../../../src/services/reports.service';
 
 const SITUATION_TYPES = [
-  'Agresión física',
-  'Hostigamiento verbal / insultos',
-  'Ciberacoso / Difamación digital',
+  'Agresión física (golpes, empujones)',
+  'Burlas, insultos o humillaciones',
+  'Acoso o agresiones por internet',
   'Exclusión o aislamiento social',
-  'Amenazas o coacción',
-  'Daño a pertenencias materiales',
-  'Otro tipo de situación',
+  'Amenazas o intimidación',
+  'Daño o robo de pertenencias',
+  'Otra situación',
 ];
 
 const FREQUENCIES = [
   'Ocurrió una sola vez',
-  'Ocurre de forma ocasional',
-  'Ocurre frecuentemente (semanal)',
-  'Ocurre de forma continua / diaria',
+  'Ocurrió varias veces',
+  'Ocurre frecuentemente',
+  'Ocurre todos o casi todos los días',
+  'No sé con qué frecuencia ocurre',
 ];
 
 const LOCATIONS = [
   'Dentro del aula',
-  'Patio / Recreo',
+  'Patio o recreo',
   'Baños',
-  'Entrada / Salida del colegio',
-  'En las inmediaciones del colegio',
-  'Redes sociales / Mensajería digital',
+  'Entrada o salida del colegio',
+  'Cerca del colegio',
+  'Internet, redes sociales o mensajes',
+  'No sé dónde ocurrió',
   'Otro lugar',
 ];
 
@@ -214,7 +216,7 @@ export default function NewReportScreen() {
         Alert.alert('Campo requerido', 'Por favor selecciona al menos un tipo de situación.');
         return;
       }
-      if (selectedSituations.includes('Otro tipo de situación') && !customSituation.trim()) {
+      if (selectedSituations.includes('Otra situación') && !customSituation.trim()) {
         Alert.alert('Campo requerido', 'Por favor especifica el tipo de situación.');
         return;
       }
@@ -274,7 +276,7 @@ export default function NewReportScreen() {
   // Generar cadenas formateadas para guardar en la base de datos
   const getFormattedSituations = () => {
     return selectedSituations
-      .map((s) => (s === 'Otro tipo de situación' ? `Otro: ${customSituation.trim()}` : s))
+      .map((s) => (s === 'Otra situación' ? `Otro: ${customSituation.trim()}` : s))
       .join(', ');
   };
 
@@ -434,9 +436,9 @@ export default function NewReportScreen() {
               );
             })}
 
-            {selectedSituations.includes('Otro tipo de situación') && (
+            {selectedSituations.includes('Otra situación') && (
               <Input
-                label="Especifica el tipo de situación"
+                label="Especifica qué otra situación ocurre"
                 placeholder="Escribe aquí el tipo..."
                 value={customSituation}
                 onChangeText={setCustomSituation}
