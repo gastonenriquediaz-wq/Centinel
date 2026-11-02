@@ -39,12 +39,6 @@ export default function AuthorityReportDetailScreen() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isFirstOpenedNow, setIsFirstOpenedNow] = useState(false);
 
-  // Modal para vincular a caso existente
-  const [linkModalVisible, setLinkModalVisible] = useState(false);
-  const [availableCases, setAvailableCases] = useState<Case[]>([]);
-  const [loadingCases, setLoadingCases] = useState(false);
-  const [linkingCaseId, setLinkingCaseId] = useState<string | null>(null);
-
   const loadReport = async () => {
     try {
       const [reportRes, unreadCount] = await Promise.all([
@@ -207,61 +201,6 @@ export default function AuthorityReportDetailScreen() {
     }
   };
 
-  const handleOpenLinkModal = async () => {
-    if (!profile?.institution_id) return;
-    setLinkModalVisible(true);
-    setLoadingCases(true);
-    try {
-      const { data, error } = await CasesService.getInstitutionCases(profile.institution_id);
-      if (!error && data) {
-        // Filtramos casos activos (abiertos o en investigación)
-        const active = data.filter((c) => c.status !== 'resolved');
-        setAvailableCases(active);
-      } else {
-        setAvailableCases([]);
-      }
-    } finally {
-      setLoadingCases(false);
-    }
-  };
-
-  const handleConfirmLinkCase = (caseItem: Case) => {
-    if (!report || !profile) return;
-    Alert.alert(
-      'Vincular reporte a caso',
-      `¿Deseás vincular este reporte al caso institucional "${caseItem.title}"?\n\nEl reporte pasará a estar en seguimiento bajo este caso.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Vincular caso',
-          onPress: async () => {
-            setLinkingCaseId(caseItem.id);
-            try {
-              const { error } = await CasesService.linkReportToCase(
-                report.id,
-                caseItem.id,
-                profile.id,
-                profile.institution_id
-              );
-              if (error) {
-                Alert.alert('Error', error);
-              } else {
-                setLinkModalVisible(false);
-                Alert.alert(
-                  'Reporte vinculado',
-                  `El reporte ha sido vinculado exitosamente al caso "${caseItem.title}".`
-                );
-                loadReport();
-              }
-            } finally {
-              setLinkingCaseId(null);
-            }
-          },
-        },
-      ]
-    );
-  };
-
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -413,7 +352,7 @@ export default function AuthorityReportDetailScreen() {
 
               <TouchableOpacity
                 style={styles.linkExistingCaseBtn}
-                onPress={handleOpenLinkModal}
+                onPress={() => router.push(`/(authority)/reports/${report.id}/link-case` as any)}
                 disabled={updating}
                 activeOpacity={0.8}
               >
@@ -462,7 +401,7 @@ export default function AuthorityReportDetailScreen() {
 
                   <TouchableOpacity
                     style={styles.linkExistingCaseBtn}
-                    onPress={handleOpenLinkModal}
+                    onPress={() => router.push(`/(authority)/reports/${report.id}/link-case` as any)}
                     disabled={updating}
                     activeOpacity={0.8}
                   >
@@ -668,115 +607,6 @@ export default function AuthorityReportDetailScreen() {
                 disabled={updating}
               />
             </View>
-          </Card>
-        </View>
-      </Modal>
-
-      {/* MODAL: VINCULAR A CASO EXISTENTE */}
-      <Modal
-        visible={linkModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setLinkModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <Card style={styles.modalCardWide}>
-            <View style={styles.modalHeaderRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Vincular a caso existente</Text>
-                <Text style={styles.modalSubtitle}>
-                  Seleccioná el caso institucional abierto o en seguimiento al que corresponde este reporte.
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setLinkModalVisible(false)}
-                style={styles.modalCloseBtn}
-              >
-                <Ionicons name="close" size={22} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            {loadingCases ? (
-              <View style={{ paddingVertical: 30, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#1E3A8A" />
-                <Text style={{ marginTop: 10, color: '#64748B', fontSize: 13 }}>
-                  Cargando casos institucionales...
-                </Text>
-              </View>
-            ) : availableCases.length === 0 ? (
-              <View style={styles.emptyCasesBox}>
-                <Ionicons name="folder-open-outline" size={40} color="#94A3B8" />
-                <Text style={styles.emptyCasesTitle}>No hay casos activos</Text>
-                <Text style={styles.emptyCasesText}>
-                  Actualmente no existen otros casos abiertos o en seguimiento en tu institución. Podés crear uno nuevo con el botón "Crear caso".
-                </Text>
-                <Button
-                  title="Entendido"
-                  variant="outline"
-                  onPress={() => setLinkModalVisible(false)}
-                  style={{ marginTop: 14 }}
-                />
-              </View>
-            ) : (
-              <ScrollView style={{ maxHeight: 380, marginTop: 10 }} showsVerticalScrollIndicator={false}>
-                {availableCases.map((c) => {
-                  const isCurrentLinking = linkingCaseId === c.id;
-                  return (
-                    <TouchableOpacity
-                      key={c.id}
-                      style={styles.caseSelectionCard}
-                      onPress={() => handleConfirmLinkCase(c)}
-                      disabled={!!linkingCaseId}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.caseSelectionHeader}>
-                        <Text style={styles.caseSelectionTitle} numberOfLines={2}>
-                          {c.title}
-                        </Text>
-                        <View style={styles.caseSelectionBadge}>
-                          <Text style={styles.caseSelectionBadgeText}>
-                            {c.status === 'under_investigation' ? 'En seguimiento' : 'Abierto'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.caseSelectionMetaRow}>
-                        <Ionicons name="shield-checkmark-outline" size={13} color="#2563EB" />
-                        <Text style={styles.caseSelectionMetaText} numberOfLines={1}>
-                          {c.protocol_level || 'Protocolo institucional'}
-                        </Text>
-                      </View>
-
-                      {c.report && (
-                        <View style={styles.caseSelectionMetaRow}>
-                          <Ionicons name="person-outline" size={13} color="#64748B" />
-                          <Text style={styles.caseSelectionMetaSub} numberOfLines={1}>
-                            Iniciado por:{' '}
-                            {c.report.student
-                              ? `${c.report.student.first_name} ${c.report.student.last_name}`
-                              : 'Estudiante'}
-                          </Text>
-                        </View>
-                      )}
-
-                      <View style={styles.caseSelectionActionRow}>
-                        <Text style={styles.caseSelectionActionText}>
-                          {isCurrentLinking ? 'Vinculando...' : 'Tocar para vincular a este caso'}
-                        </Text>
-                        <Ionicons name="chevron-forward" size={14} color="#1E3A8A" />
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            )}
-
-            <Button
-              title="Cancelar"
-              variant="outline"
-              onPress={() => setLinkModalVisible(false)}
-              style={{ marginTop: 12 }}
-            />
           </Card>
         </View>
       </Modal>
@@ -1135,101 +965,6 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     padding: 20,
-  },
-  modalCardWide: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    maxHeight: '85%',
-  },
-  modalHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  modalCloseBtn: {
-    padding: 4,
-  },
-  caseSelectionCard: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-  },
-  caseSelectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 6,
-  },
-  caseSelectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
-    flex: 1,
-  },
-  caseSelectionBadge: {
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  caseSelectionBadgeText: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#1D4ED8',
-  },
-  caseSelectionMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 4,
-  },
-  caseSelectionMetaText: {
-    fontSize: 12,
-    color: '#2563EB',
-    fontWeight: '600',
-  },
-  caseSelectionMetaSub: {
-    fontSize: 11.5,
-    color: '#64748B',
-  },
-  caseSelectionActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 6,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#EEF2F6',
-  },
-  caseSelectionActionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1E3A8A',
-  },
-  emptyCasesBox: {
-    paddingVertical: 24,
-    alignItems: 'center',
-  },
-  emptyCasesTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  emptyCasesText: {
-    fontSize: 12.5,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 17,
   },
   modalTitle: {
     fontSize: 18,
