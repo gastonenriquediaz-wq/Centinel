@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Share,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +21,7 @@ import { Case, CaseStatus, ActType, CaseInvolvedStudent } from '../../../../src/
 
 export default function AuthorityCaseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { profile } = useAuthStore();
+  const { profile, institution } = useAuthStore();
   const [caseItem, setCaseItem] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
   const [resolving, setResolving] = useState(false);
@@ -228,6 +229,82 @@ export default function AuthorityCaseDetailScreen() {
 
   const involvedStudents = caseItem.involved_students || [];
   const actsList = caseItem.acts || [];
+
+  const handleExportCaseDossier = async () => {
+    try {
+      const instName = (institution?.name || 'ESTABLECIMIENTO EDUCATIVO').toUpperCase();
+      const statusText = badge.label;
+      const studentsLines =
+        involvedStudents.length > 0
+          ? involvedStudents
+              .map(
+                (s, i) =>
+                  `   ${i + 1}. ${s.name} — ${s.role}${s.course ? ` (${s.course})` : ''}`
+              )
+              .join('\n')
+          : '   • Sin estudiantes adicionales registrados.';
+
+      const actsLines =
+        actsList.length > 0
+          ? actsList
+              .map(
+                (a, i) =>
+                  `   [${i + 1}] ${a.title} (${formatDate(a.occurred_at)})\n` +
+                  `       Modalidad: ${getActTypeLabel(a.act_type, a.title)}\n` +
+                  `       Intervinientes: ${a.participants}\n` +
+                  `       Detalle: ${a.content}`
+              )
+              .join('\n\n')
+          : '   • Aún no se han labrado actuaciones institucionales.';
+
+      const resolutionSection =
+        caseItem.status === 'resolved' && caseItem.resolution_summary
+          ? `\n--------------------------------------------------\n` +
+            `4. RESOLUCIÓN Y ACUERDOS DE CONVIVENCIA\n` +
+            `--------------------------------------------------\n` +
+            `${caseItem.resolution_summary}\n`
+          : '';
+
+      const fullDossierText =
+        `==================================================\n` +
+        `${instName}\n` +
+        `EXPEDIENTE INSTITUCIONAL DE CONVIVENCIA ESCOLAR\n` +
+        `==================================================\n\n` +
+        `• CARÁTULA: ${caseItem.title}\n` +
+        `• ESTADO ACTUAL: ${statusText}\n` +
+        `• FECHA DE APERTURA: ${formatDate(caseItem.created_at)}\n\n` +
+        `--------------------------------------------------\n` +
+        `1. REPORTE DE ORIGEN\n` +
+        `--------------------------------------------------\n` +
+        `• Situación: ${caseItem.report?.situation_type || 'No especificada'}\n` +
+        `• Lugar: ${caseItem.report?.location || 'No especificado'}\n` +
+        `• Frecuencia: ${caseItem.report?.frequency || 'No especificada'}\n` +
+        `• Relato inicial: ${caseItem.report?.description || 'Sin descripción'}\n\n` +
+        `--------------------------------------------------\n` +
+        `2. ESTUDIANTES INVOLUCRADOS\n` +
+        `--------------------------------------------------\n` +
+        `${studentsLines}\n\n` +
+        `--------------------------------------------------\n` +
+        `3. ACTUACIONES INSTITUCIONALES LABRADAS (${actsList.length})\n` +
+        `--------------------------------------------------\n` +
+        `${actsLines}\n` +
+        `${resolutionSection}\n` +
+        `--------------------------------------------------\n` +
+        `FIRMAS Y CERTIFICACIÓN DIRECTIVA\n` +
+        `--------------------------------------------------\n\n` +
+        `_________________________________________\n` +
+        `Firma y Sello de Dirección / Autoridad Actuante\n` +
+        `${profile?.first_name || ''} ${profile?.last_name || ''} (${profile?.position || 'Autoridad Escolar'})\n` +
+        `==================================================`;
+
+      await Share.share({
+        title: `Expediente - ${caseItem.title}`,
+        message: fullDossierText,
+      });
+    } catch (err: any) {
+      Alert.alert('Error al exportar', err.message || 'No se pudo exportar el expediente.');
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -445,7 +522,25 @@ export default function AuthorityCaseDetailScreen() {
         <Ionicons name="chevron-forward" size={20} color="#64748B" />
       </TouchableOpacity>
 
-      {/* 6. Confidencialidad */}
+      {/* 6. Exportar / Imprimir Resumen del Expediente */}
+      <TouchableOpacity
+        style={styles.historyCard}
+        onPress={handleExportCaseDossier}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.historyIconWrap, { backgroundColor: '#DCFCE7' }]}>
+          <Ionicons name="print-outline" size={22} color="#15803D" />
+        </View>
+        <View style={styles.historyContent}>
+          <Text style={styles.historyTitle}>Exportar / Imprimir expediente completo</Text>
+          <Text style={styles.historySubtitle}>
+            Generá el documento formal consolidado con todas las actuaciones y espacio para firmas.
+          </Text>
+        </View>
+        <Ionicons name="share-outline" size={20} color="#15803D" />
+      </TouchableOpacity>
+
+      {/* 7. Confidencialidad */}
       <View style={styles.confidentialityCard}>
         <Ionicons name="information-circle-outline" size={24} color="#1E3A8A" />
         <View style={styles.confidentialityContent}>

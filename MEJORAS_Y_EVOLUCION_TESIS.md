@@ -83,8 +83,13 @@ Este documento conserva la trazabilidad de todas las **funcionalidades agregadas
   * **Indicador de Frecuencia y Persistencia Temporal:** Destaca el porcentaje de **alta recurrencia** (hechos que ocurren frecuentemente o casi todos los días) frente a hechos aislados.
   * **Ranking de Incidencia por Curso y División:** Lista ordenada de cursos según volumen de reportes con acceso directo a la nómina del curso.
 
-### Punto 2 — Vista de Acta Imprimible / Exportable (Protocolo físico con firmas) — [PENDIENTE DE IMPLEMENTACIÓN]
-* Generación de vista formal lista para imprimir/compartir de las actuaciones institucionales y resoluciones de casos, incluyendo membrete del colegio, datos de los intervinientes, acuerdos y líneas para firmas ológrafas de padres/tutores y autoridades.
+### Punto 2 — Vista de Acta Imprimible / Exportable (Protocolo físico con firmas) — [IMPLEMENTADO]
+* **Objetivo:** Articular el registro digital de las actuaciones escolares con el requisito legal/administrativo de contar con constancias físicas firmadas de puño y letra por padres, tutores, estudiantes y directivos (Ley Nacional N° 26.892).
+* **Funcionalidades incluidas:**
+  * **Selector de modo en Detalle de Actuación (`app/(authority)/cases/[id]/acts/[actId].tsx`):** Permite alternar con un toque entre **"Vista Digital"** y **"Protocolo con Firmas"**.
+  * **Hoja de Protocolo Oficial:** Renderiza el documento con formato de acta administrativa escolar (membrete de la institución, leyenda de Ley N° 26.892, datos de expediente y folio, cláusula formal de apertura, cuerpo de la actuación, cláusula de cierre y conformidad).
+  * **Recuadros Individuales de Firma Ológrafa:** Genera automáticamente un recuadro de firma punteado para cada interviniente registrado en la actuación (con líneas para *Firma*, *Aclaración*, *Rol/Vínculo* y *DNI*), más el recuadro de *Sello de la Institución y Firma de Dirección*.
+  * **Exportación / Impresión de Acta Individual y de Expediente Completo (`app/(authority)/cases/[id]/index.tsx`):** Botón para compartir/exportar o imprimir tanto un acta puntual como el **Expediente Institucional Completo** (con reporte de origen, estudiantes involucrados, todas las actuaciones labradas y resolución final).
 
 ### Punto 3 — Retroalimentación Institucional para el Estudiante — [PENDIENTE DE IMPLEMENTACIÓN]
 * Indicador claro y tranquilizador en el detalle del reporte del alumno para que sepa que su comunicación está siendo atendida por el equipo directivo y que se activaron los protocolos de convivencia, resguardando la confidencialidad de las actuaciones internas.
