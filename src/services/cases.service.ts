@@ -6,7 +6,8 @@ export interface CreateCaseInput {
   report_id: string;
   created_by: string;
   title: string;
-  protocol_level: string;
+  protocol_level?: string;
+  initial_observation?: string;
 }
 
 export interface CreateCaseActInput {
@@ -36,7 +37,7 @@ export const CasesService = {
           report_id: input.report_id,
           created_by: input.created_by,
           title: input.title.trim(),
-          protocol_level: input.protocol_level,
+          protocol_level: input.protocol_level?.trim() || 'Protocolo institucional',
           status: 'open',
         })
         .select()
@@ -65,7 +66,8 @@ export const CasesService = {
         performed_by: input.created_by,
         details: {
           report_id: input.report_id,
-          protocol_level: input.protocol_level,
+          protocol_level: input.protocol_level?.trim() || 'Protocolo institucional',
+          initial_observation: input.initial_observation?.trim() || null,
         },
       });
 
