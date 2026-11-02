@@ -15,13 +15,13 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { CasesService } from '../../../src/services/cases.service';
 import { Case, CaseStatus } from '../../../src/types/database.types';
 
-type CaseFilterType = 'all' | 'active' | 'open' | 'under_investigation' | 'resolved';
+type CaseFilterType = 'all' | 'open' | 'under_investigation' | 'resolved' | 'active';
 
 const FILTER_TABS: { label: string; value: CaseFilterType }[] = [
   { label: 'Todos', value: 'all' },
-  { label: 'Abiertos', value: 'active' }, // Muestra 'open' y 'under_investigation'
-  { label: 'En Investigación', value: 'under_investigation' },
-  { label: 'Resueltos', value: 'resolved' },
+  { label: 'Abierto', value: 'open' },
+  { label: 'En seguimiento', value: 'under_investigation' },
+  { label: 'Finalizado', value: 'resolved' },
 ];
 
 export default function AuthorityCasesList() {
@@ -31,13 +31,17 @@ export default function AuthorityCasesList() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<CaseFilterType>(
-    filter && ['all', 'active', 'open', 'under_investigation', 'resolved'].includes(filter)
+    filter === 'active'
+      ? 'open'
+      : filter && ['all', 'open', 'under_investigation', 'resolved'].includes(filter)
       ? (filter as CaseFilterType)
       : 'all'
   );
 
   useEffect(() => {
-    if (filter && ['all', 'active', 'open', 'under_investigation', 'resolved'].includes(filter)) {
+    if (filter === 'active') {
+      setSelectedFilter('open');
+    } else if (filter && ['all', 'open', 'under_investigation', 'resolved'].includes(filter)) {
       setSelectedFilter(filter as CaseFilterType);
     }
   }, [filter]);
@@ -83,9 +87,9 @@ export default function AuthorityCasesList() {
       case 'open':
         return { label: 'Abierto', bg: '#EFF6FF', text: '#2563EB' };
       case 'under_investigation':
-        return { label: 'En Investigación', bg: '#FEF3C7', text: '#D97706' };
+        return { label: 'En seguimiento', bg: '#FEF3C7', text: '#D97706' };
       case 'resolved':
-        return { label: 'Resuelto', bg: '#DCFCE7', text: '#16A34A' };
+        return { label: 'Finalizado', bg: '#DCFCE7', text: '#16A34A' };
       default:
         return { label: status, bg: '#F1F5F9', text: '#475569' };
     }
