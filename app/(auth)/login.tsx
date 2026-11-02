@@ -46,9 +46,10 @@ export default function LoginScreen() {
         await AuthService.signOut();
 
         if (profile.account_status === 'pending') {
-          setStatusBlockedInfo(
-            'Tu cuenta se encuentra PENDIENTE de aprobación por las autoridades de tu institución. Podrás ingresar una vez que sea habilitada.'
-          );
+          const pendingMsg =
+            'Tu registro está pendiente de confirmación por una autoridad escolar. Debés esperar la aprobación de tu colegio antes de poder ingresar a la aplicación.';
+          setStatusBlockedInfo(pendingMsg);
+          Alert.alert('Cuenta pendiente de aprobación', pendingMsg, [{ text: 'Entendido' }]);
         } else if (profile.account_status === 'rejected') {
           setStatusBlockedInfo(
             'Tu solicitud de registro ha sido RECHAZADA por las autoridades institucionales.'
@@ -108,7 +109,10 @@ export default function LoginScreen() {
 
           {statusBlockedInfo && (
             <View style={styles.alertBoxWarning}>
-              <Text style={styles.alertTitleWarning}>Cuenta no habilitada</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                <Ionicons name="time-outline" size={18} color="#92400E" style={{ marginRight: 6 }} />
+                <Text style={styles.alertTitleWarning}>Esperando aprobación escolar</Text>
+              </View>
               <Text style={styles.alertTextWarning}>{statusBlockedInfo}</Text>
             </View>
           )}

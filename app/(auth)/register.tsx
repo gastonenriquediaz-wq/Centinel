@@ -8,11 +8,14 @@ import {
   Platform,
   Alert,
   TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Card } from '../../src/components/ui/Card';
-import { Input } from '../../src/components/ui/Input';
 import { Button } from '../../src/components/ui/Button';
 import { CoursesService } from '../../src/services/courses.service';
 import { supabase } from '../../src/services/supabase';
@@ -30,11 +33,10 @@ export default function StudentRegisterScreen() {
   const [validating, setValidating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Protección contra ataques de fuerza bruta / adivinación de códigos
+  // Protección contra intentos fallidos
   const [failedAttempts, setFailedAttempts] = useState<number>(0);
   const [lockoutRemaining, setLockoutRemaining] = useState<number>(0);
 
-  // Temporizador para el desbloqueo tras superar el límite de intentos
   useEffect(() => {
     if (lockoutRemaining <= 0) return;
     const interval = setInterval(() => {
@@ -57,9 +59,31 @@ export default function StudentRegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registering, setRegistering] = useState(false);
 
-  // Validar token QR o código alfanumérico con protección contra adivinación
+  // Modal para selección de fecha de nacimiento
+  const [dateModalVisible, setDateModalVisible] = useState(false);
+  const [tempDay, setTempDay] = useState('');
+  const [tempMonth, setTempMonth] = useState('05');
+  const [tempYear, setTempYear] = useState('2008');
+
+  const MONTHS = [
+    { label: 'Enero', value: '01' },
+    { label: 'Febrero', value: '02' },
+    { label: 'Marzo', value: '03' },
+    { label: 'Abril', value: '04' },
+    { label: 'Mayo', value: '05' },
+    { label: 'Junio', value: '06' },
+    { label: 'Julio', value: '07' },
+    { label: 'Agosto', value: '08' },
+    { label: 'Septiembre', value: '09' },
+    { label: 'Octubre', value: '10' },
+    { label: 'Noviembre', value: '11' },
+    { label: 'Diciembre', value: '12' },
+  ];
+
   const handleValidateToken = async (token: string) => {
     if (lockoutRemaining > 0) {
       Alert.alert(
@@ -88,7 +112,7 @@ export default function StudentRegisterScreen() {
           setFailedAttempts(0);
           setLockoutRemaining(60);
           setErrorMessage(
-            'Has superado el límite de 5 intentos erróneos. Por seguridad contra adivinación de códigos, el ingreso se encuentra bloqueado por 60 segundos.'
+            'Has superado el límite de 5 intentos erróneos. El ingreso se encuentra bloqueado por 60 segundos.'
           );
           Alert.alert(
             'Límite de seguridad alcanzado',
@@ -104,7 +128,6 @@ export default function StudentRegisterScreen() {
         return;
       }
 
-      // Validación exitosa: reiniciar contador de fallos
       setFailedAttempts(0);
       setLockoutRemaining(0);
       setQrToken(result.token_for_registration || trimmed);
@@ -134,38 +157,76 @@ export default function StudentRegisterScreen() {
     handleValidateToken(data);
   };
 
-  // Enviar formulario de registro (RF-05)
+  const handleConfirmDate = () => {
+    const dayNum = parseInt(tempDay, 10);
+    const yearNum = parseInt(tempYear, 10);
+
+    if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) {
+      Alert.alert('Día inválido', 'Por favor ingresá un día válido entre 1 y 31.');
+      return;
+    }
+
+    if (isNaN(yearNum) || yearNum < 1990 || yearNum > 2020) {
+      Alert.alert('Año inválido', 'Por favor ingresá un año válido entre 1990 y 2020.');
+      return;
+    }
+
+    const formattedDay = dayNum.toString().padStart(2, '0');
+    const isoDate = `${yearNum}-${tempMonth}-${formattedDay}`;
+    setBirthDate(isoDate);
+    setDateModalVisible(false);
+  };
+
+  const formatDisplayBirthDate = (isoStr: string) => {
+    if (!isoStr) return '';
+    try {
+      const [y, m, d] = isoStr.split('-');
+      const monthObj = MONTHS.find((item) => item.value === m);
+      const mName = monthObj ? monthObj.label.toLowerCase() : m;
+      return `${parseInt(d, 10)} de ${mName} de ${y}`;
+    } catch {
+      return isoStr;
+    }
+  };
+
+  // Enviar formulario de registro
   const handleRegister = async () => {
     setErrorMessage(null);
 
     if (!firstName.trim() || !lastName.trim()) {
       setErrorMessage('Ingresá tu nombre y apellido reales.');
+      Alert.alert('Campo requerido', 'Ingresá tu nombre y apellido reales.');
       return;
     }
 
     const cleanDni = dni.trim().replace(/\D/g, '');
     if (cleanDni.length < 7 || cleanDni.length > 9) {
       setErrorMessage('Ingresá un DNI válido (entre 7 y 9 dígitos sin puntos).');
+      Alert.alert('DNI inválido', 'Ingresá un DNI válido (entre 7 y 9 dígitos sin puntos).');
       return;
     }
 
     if (!birthDate.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(birthDate.trim())) {
-      setErrorMessage('Ingresá tu fecha de nacimiento en formato AAAA-MM-DD (ej: 2008-05-14).');
+      setErrorMessage('Seleccioná tu fecha de nacimiento.');
+      Alert.alert('Fecha de nacimiento requerida', 'Por favor seleccioná tu fecha de nacimiento.');
       return;
     }
 
     if (!email.trim() || !password) {
       setErrorMessage('Ingresá correo electrónico y contraseña.');
+      Alert.alert('Campos requeridos', 'Ingresá correo electrónico y contraseña.');
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMessage('La contraseña debe tener al menos 6 caracteres.');
+    if (password.length < 8) {
+      setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
+      Alert.alert('Contraseña débil', 'La contraseña debe tener al menos 8 caracteres.');
       return;
     }
 
     if (password !== confirmPassword) {
       setErrorMessage('Las contraseñas no coinciden.');
+      Alert.alert('Contraseñas no coinciden', 'Por favor verificá que ambas contraseñas sean iguales.');
       return;
     }
 
@@ -178,11 +239,29 @@ export default function StudentRegisterScreen() {
         password,
       });
 
+      // Detección precisa de correo electrónico duplicado
       if (authErr) {
-        if (authErr.message.includes('already registered')) {
-          throw new Error('El correo electrónico ya se encuentra registrado.');
+        const errLower = authErr.message.toLowerCase();
+        if (
+          errLower.includes('already registered') ||
+          errLower.includes('already exists') ||
+          errLower.includes('user already exists') ||
+          authErr.status === 422
+        ) {
+          const msg = 'El correo electrónico ya se encuentra en uso por otro usuario.';
+          setErrorMessage(msg);
+          Alert.alert('No se puede registrar', msg);
+          return;
         }
         throw authErr;
+      }
+
+      // En Supabase con "prevent user enumeration", si el email ya existe retorna identities vacío
+      if (authData.user && authData.user.identities && authData.user.identities.length === 0) {
+        const msg = 'El correo electrónico ya se encuentra en uso por otro usuario.';
+        setErrorMessage(msg);
+        Alert.alert('No se puede registrar', msg);
+        return;
       }
 
       if (!authData.user) {
@@ -200,13 +279,28 @@ export default function StudentRegisterScreen() {
       });
 
       if (!regResult.success) {
-        throw new Error(regResult.error || 'Error al registrar los datos del estudiante.');
+        await supabase.auth.signOut();
+
+        const errMsg = regResult.error || '';
+        if (
+          errMsg.toLowerCase().includes('documento') ||
+          errMsg.toLowerCase().includes('dni') ||
+          errMsg.toLowerCase().includes('registrado')
+        ) {
+          const msg = 'El Documento Nacional de Identidad (DNI) ya se encuentra en uso por otro usuario.';
+          setErrorMessage(msg);
+          Alert.alert('No se puede registrar', msg);
+          return;
+        }
+
+        throw new Error(errMsg || 'Error al registrar los datos del estudiante.');
       }
 
-      // Desconectar sesión automática para exigir aprobación posterior (RF-07)
+      // Desconectar sesión automática para exigir aprobación posterior por autoridad escolar
       await supabase.auth.signOut();
       setPhase('success');
     } catch (err: any) {
+      await supabase.auth.signOut().catch(() => {});
       const msg = err.message || 'Error al completar el registro.';
       setErrorMessage(msg);
       Alert.alert('No se pudo registrar', msg);
@@ -220,6 +314,15 @@ export default function StudentRegisterScreen() {
       style={styles.keyboardView}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Stack.Screen
+        options={{
+          title: 'Registro de Estudiante',
+          headerStyle: { backgroundColor: '#1E3A8A' },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: { fontWeight: '700' },
+        }}
+      />
+
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* FASE 1: ESCANEAR O INGRESAR QR */}
         {phase === 'scan' && (
@@ -235,7 +338,6 @@ export default function StudentRegisterScreen() {
               </View>
             )}
 
-            {/* Visor de Cámara */}
             <View style={styles.cameraBox}>
               {!permission?.granted ? (
                 <View style={styles.permissionBox}>
@@ -259,14 +361,15 @@ export default function StudentRegisterScreen() {
 
             {validating && (
               <View style={styles.validatingRow}>
+                <ActivityIndicator size="small" color="#1E3A8A" style={{ marginRight: 8 }} />
                 <Text style={styles.validatingText}>Verificando código con el colegio...</Text>
               </View>
             )}
 
-            {/* Alternativa de ingreso manual (código alfanumérico de 10 caracteres o token QR) */}
             <View style={styles.manualSection}>
               <Text style={styles.manualLabel}>¿Tenés el código alfanumérico del curso o del QR?</Text>
-              <Input
+              <TextInput
+                style={styles.manualInput}
                 placeholder="Ej: 7K8M9P2R4X o código QR"
                 value={manualTokenInput}
                 onChangeText={setManualTokenInput}
@@ -302,18 +405,47 @@ export default function StudentRegisterScreen() {
           </Card>
         )}
 
-        {/* FASE 2: FORMULARIO DE DATOS REALES (RF-05) */}
+        {/* FASE 2: FORMULARIO DE REGISTRO (IDENTICO AL MOCKUP) */}
         {phase === 'form' && qrInfo && (
-          <Card style={styles.card}>
-            <View style={styles.instBanner}>
-              <Text style={styles.instLabel}>Institución:</Text>
-              <Text style={styles.instName}>{qrInfo.institution_name}</Text>
-              <Text style={styles.courseBadge}>Curso: {qrInfo.course_name}</Text>
+          <View style={styles.formContainer}>
+            {/* Banner Superior de Institución y Código Validado */}
+            <View style={styles.topBannerCard}>
+              {/* Badge superior Código validado */}
+              <View style={styles.validBadgeRow}>
+                <View style={styles.validBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+                  <Text style={styles.validBadgeText}>Código validado</Text>
+                </View>
+              </View>
+
+              {/* Institución y Curso */}
+              <View style={styles.instRow}>
+                <View style={styles.schoolIconWrap}>
+                  <Ionicons name="business-outline" size={24} color="#1E3A8A" />
+                </View>
+                <View style={styles.instTextCol}>
+                  <Text style={styles.instLabel}>Institución:</Text>
+                  <Text style={styles.instName}>{qrInfo.institution_name}</Text>
+                  <Text style={styles.courseBadge}>Curso: {qrInfo.course_name}</Text>
+                </View>
+              </View>
+
+              {/* Línea divisoria */}
+              <View style={styles.bannerDivider} />
+
+              {/* Mensaje de vinculación automática */}
+              <View style={styles.bannerNoticeRow}>
+                <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
+                <Text style={styles.bannerNoticeText}>
+                  Estos datos se asociaron automáticamente al código utilizado.
+                </Text>
+              </View>
             </View>
 
-            <Text style={styles.formTitle}>Completar Registro</Text>
-            <Text style={styles.formSub}>
-              Ingresá tus datos reales. Esta cuenta deberá ser aprobada por una autoridad de tu colegio.
+            {/* Cabecera del Formulario */}
+            <Text style={styles.formMainTitle}>Completar registro</Text>
+            <Text style={styles.formSubtitle}>
+              Ingresá tus datos reales. La cuenta quedará pendiente de aprobación por una autoridad educativa de tu colegio.
             </Text>
 
             {errorMessage && (
@@ -322,96 +454,181 @@ export default function StudentRegisterScreen() {
               </View>
             )}
 
-            <Input
-              label="Nombre(s) *"
-              placeholder="Ej: Juan Martín"
-              value={firstName}
-              onChangeText={setFirstName}
-              autoCapitalize="words"
-            />
+            {/* Campos del Formulario con Íconos */}
 
-            <Input
-              label="Apellido(s) *"
-              placeholder="Ej: Gómez"
-              value={lastName}
-              onChangeText={setLastName}
-              autoCapitalize="words"
-            />
+            {/* Nombre(s) */}
+            <Text style={styles.fieldLabel}>Nombre(s) *</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={18} color="#64748B" style={styles.fieldIcon} />
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="Ej.: Juan Martín"
+                placeholderTextColor="#94A3B8"
+                value={firstName}
+                onChangeText={setFirstName}
+                autoCapitalize="words"
+              />
+            </View>
 
-            <Input
-              label="Documento Nacional de Identidad (DNI) *"
-              placeholder="Ej: 45123456 (sin puntos)"
-              value={dni}
-              onChangeText={setDni}
-              keyboardType="numeric"
-            />
+            {/* Apellido(s) */}
+            <Text style={styles.fieldLabel}>Apellido(s) *</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={18} color="#64748B" style={styles.fieldIcon} />
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="Ej.: Gómez"
+                placeholderTextColor="#94A3B8"
+                value={lastName}
+                onChangeText={setLastName}
+                autoCapitalize="words"
+              />
+            </View>
 
-            <Input
-              label="Fecha de Nacimiento (AAAA-MM-DD) *"
-              placeholder="Ej: 2008-04-20"
-              value={birthDate}
-              onChangeText={setBirthDate}
-            />
+            {/* Documento Nacional de Identidad (DNI) */}
+            <Text style={styles.fieldLabel}>Documento Nacional de Identidad (DNI) *</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="id-card-outline" size={18} color="#64748B" style={styles.fieldIcon} />
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="Ej.: 45123456 (sin puntos)"
+                placeholderTextColor="#94A3B8"
+                value={dni}
+                onChangeText={setDni}
+                keyboardType="numeric"
+              />
+            </View>
 
-            <Input
-              label="Correo electrónico *"
-              placeholder="tucorreo@ejemplo.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+            {/* Fecha de nacimiento */}
+            <Text style={styles.fieldLabel}>Fecha de nacimiento *</Text>
+            <TouchableOpacity
+              style={styles.inputContainer}
+              onPress={() => setDateModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="calendar-outline" size={18} color="#64748B" style={styles.fieldIcon} />
+              <Text style={[styles.fieldInput, !birthDate && styles.placeholderText]}>
+                {birthDate ? formatDisplayBirthDate(birthDate) : 'Seleccionar fecha'}
+              </Text>
+            </TouchableOpacity>
 
-            <Input
-              label="Contraseña *"
-              placeholder="Mínimo 6 caracteres"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            {/* Correo electrónico */}
+            <Text style={styles.fieldLabel}>Correo electrónico *</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={18} color="#64748B" style={styles.fieldIcon} />
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="tucorreo@ejemplo.com"
+                placeholderTextColor="#94A3B8"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+            <Text style={styles.helperText}>
+              Usá un correo al que tengas acceso. Lo necesitarás para iniciar sesión y recuperar tu contraseña.
+            </Text>
 
-            <Input
-              label="Confirmar contraseña *"
-              placeholder="Repetí la contraseña"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
+            {/* Contraseña */}
+            <Text style={styles.fieldLabel}>Contraseña *</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIcon} />
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="Mínimo 8 caracteres"
+                placeholderTextColor="#94A3B8"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color="#64748B"
+                />
+              </TouchableOpacity>
+            </View>
 
-            <Button
-              title="Enviar Solicitud de Registro"
+            {/* Confirmar contraseña */}
+            <Text style={styles.fieldLabel}>Confirmar contraseña *</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIcon} />
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="Repetí la contraseña"
+                placeholderTextColor="#94A3B8"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color="#64748B"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Botones de acción */}
+            <TouchableOpacity
+              style={styles.submitBtn}
               onPress={handleRegister}
-              loading={registering}
-              style={styles.submitButton}
-            />
+              disabled={registering}
+            >
+              {registering ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.submitBtnText}>Enviar solicitud de registro</Text>
+              )}
+            </TouchableOpacity>
 
-            <Button
-              title="Cancelar"
-              variant="outline"
+            <TouchableOpacity
+              style={styles.cancelBtn}
               onPress={() => {
                 setPhase('scan');
                 setScanned(false);
                 setErrorMessage(null);
               }}
-              style={styles.cancelBtn}
-            />
-          </Card>
+              disabled={registering}
+            >
+              <Text style={styles.cancelBtnText}>Cancelar</Text>
+            </TouchableOpacity>
+
+            {/* Nota final */}
+            <View style={styles.footerNoteRow}>
+              <Ionicons name="information-circle-outline" size={16} color="#64748B" />
+              <Text style={styles.footerNoteText}>
+                La solicitud será revisada por una autoridad educativa antes de habilitar el acceso.
+              </Text>
+            </View>
+          </View>
         )}
 
         {/* FASE 3: AVISO DE SOLICITUD PENDIENTE */}
         {phase === 'success' && (
           <Card style={styles.card}>
             <View style={styles.successIconBox}>
-              <Text style={styles.checkIcon}>✓</Text>
+              <Ionicons name="checkmark-circle" size={48} color="#16A34A" />
             </View>
             <Text style={styles.successTitle}>Solicitud Enviada</Text>
             <Text style={styles.successBody}>
               Tu solicitud de registro ha sido vinculada al curso solicitado en tu institución.
             </Text>
             <View style={styles.infoAlert}>
-              <Text style={styles.infoAlertTitle}>Cuenta en estado Pendiente (RF-07)</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Ionicons name="time-outline" size={18} color="#92400E" style={{ marginRight: 6 }} />
+                <Text style={styles.infoAlertTitle}>Cuenta pendiente de aprobación</Text>
+              </View>
               <Text style={styles.infoAlertText}>
-                Las autoridades del colegio (director o vicedirector) verificarán tus datos en los registros institucionales para habilitar tu acceso.
+                Las autoridades del colegio verificarán tus datos en los registros institucionales para habilitar tu acceso. Cuando intentés ingresar, la app te notificará si la cuenta continúa en revisión.
               </Text>
             </View>
 
@@ -423,6 +640,91 @@ export default function StudentRegisterScreen() {
           </Card>
         )}
       </ScrollView>
+
+      {/* Modal para selección interactiva de fecha de nacimiento */}
+      <Modal
+        visible={dateModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDateModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Fecha de nacimiento</Text>
+              <TouchableOpacity onPress={() => setDateModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Ingresá tu día, mes y año de nacimiento:
+            </Text>
+
+            <View style={styles.dateInputsRow}>
+              <View style={styles.dateColSmall}>
+                <Text style={styles.dateInputLabel}>Día</Text>
+                <TextInput
+                  style={styles.dateNumInput}
+                  placeholder="14"
+                  keyboardType="numeric"
+                  maxLength={2}
+                  value={tempDay}
+                  onChangeText={setTempDay}
+                />
+              </View>
+
+              <View style={styles.dateColLarge}>
+                <Text style={styles.dateInputLabel}>Mes</Text>
+                <View style={styles.monthChipsWrap}>
+                  {MONTHS.map((m) => {
+                    const isSelected = tempMonth === m.value;
+                    return (
+                      <TouchableOpacity
+                        key={m.value}
+                        style={[styles.monthChip, isSelected && styles.monthChipSelected]}
+                        onPress={() => setTempMonth(m.value)}
+                      >
+                        <Text style={[styles.monthChipText, isSelected && styles.monthChipTextSelected]}>
+                          {m.label.substring(0, 3)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.dateColSmall}>
+                <Text style={styles.dateInputLabel}>Año</Text>
+                <TextInput
+                  style={styles.dateNumInput}
+                  placeholder="2008"
+                  keyboardType="numeric"
+                  maxLength={4}
+                  value={tempYear}
+                  onChangeText={setTempYear}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setDateModalVisible(false)}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={handleConfirmDate}
+              >
+                <Text style={styles.modalConfirmBtnText}>Confirmar fecha</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -439,6 +741,183 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 20,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  formContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  topBannerCard: {
+    backgroundColor: '#F0F7FF',
+    borderWidth: 1,
+    borderColor: '#D0E3F7',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  validBadgeRow: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  validBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    gap: 6,
+  },
+  validBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  instRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  schoolIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#E0EDFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  instTextCol: {
+    flex: 1,
+  },
+  instLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  instName: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    lineHeight: 20,
+  },
+  courseBadge: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563EB',
+    marginTop: 2,
+  },
+  bannerDivider: {
+    height: 1,
+    backgroundColor: '#DCEBFA',
+    marginVertical: 12,
+  },
+  bannerNoticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  bannerNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#475569',
+    fontStyle: 'italic',
+  },
+  formMainTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  formSubtitle: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  fieldLabel: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 6,
+    marginTop: 10,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+  },
+  fieldIcon: {
+    marginRight: 8,
+  },
+  fieldInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  placeholderText: {
+    color: '#94A3B8',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  submitBtn: {
+    backgroundColor: '#1E3A8A',
+    borderRadius: 10,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  submitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  cancelBtn: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#1E3A8A',
+    borderRadius: 10,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  cancelBtnText: {
+    color: '#1E3A8A',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  footerNoteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    marginTop: 4,
+  },
+  footerNoteText: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    flex: 1,
   },
   title: {
     fontSize: 20,
@@ -460,153 +939,101 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#0F172A',
-    marginBottom: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginBottom: 16,
   },
   permissionBox: {
-    padding: 20,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   permissionText: {
     color: '#FFFFFF',
-    fontSize: 13,
     textAlign: 'center',
+    fontSize: 14,
     marginBottom: 12,
   },
   permissionBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    minWidth: 160,
   },
   validatingRow: {
-    padding: 10,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 8,
-    marginBottom: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   validatingText: {
-    color: '#1E3A8A',
     fontSize: 13,
+    color: '#1E3A8A',
     fontWeight: '600',
   },
   manualSection: {
+    marginTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
-    paddingTop: 14,
-    marginBottom: 12,
+    paddingTop: 16,
   },
   manualLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
+    fontSize: 13,
+    color: '#334155',
     marginBottom: 8,
-    textAlign: 'center',
+    fontWeight: '600',
+  },
+  manualInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#0F172A',
+    marginBottom: 10,
   },
   lockoutBadge: {
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#F87171',
+    borderColor: '#FECACA',
     borderRadius: 8,
-    padding: 10,
+    padding: 8,
     marginBottom: 10,
-    alignItems: 'center',
   },
   lockoutText: {
-    color: '#991B1B',
+    color: '#B91C1C',
     fontSize: 12,
-    fontWeight: '700',
     textAlign: 'center',
+    fontWeight: '600',
   },
   attemptsText: {
-    color: '#D97706',
     fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
+    color: '#D97706',
     marginBottom: 8,
+    textAlign: 'center',
+    fontWeight: '500',
   },
   backButton: {
-    marginTop: 8,
-  },
-  instBanner: {
-    backgroundColor: '#EFF6FF',
-    padding: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  instLabel: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  instName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1E3A8A',
-    textAlign: 'center',
-    marginTop: 2,
-    marginBottom: 4,
-  },
-  courseBadge: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1D4ED8',
-  },
-  formTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  formSub: {
-    fontSize: 12,
-    color: '#64748B',
-    marginBottom: 16,
-    lineHeight: 16,
-    textAlign: 'justify',
-  },
-  submitButton: {
-    marginTop: 10,
-  },
-  cancelBtn: {
-    marginTop: 8,
+    marginTop: 12,
   },
   errorBox: {
     backgroundColor: '#FEF2F2',
     borderColor: '#F87171',
     borderWidth: 1,
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 14,
+    padding: 10,
+    marginBottom: 12,
   },
   errorText: {
-    color: '#991B1B',
+    color: '#B91C1C',
     fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'justify',
+    textAlign: 'center',
   },
   successIconBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#DCFCE7',
-    justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  checkIcon: {
-    fontSize: 32,
-    color: '#166534',
-    fontWeight: '800',
+    marginBottom: 12,
   },
   successTitle: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: 'bold',
     color: '#0F172A',
     textAlign: 'center',
     marginBottom: 8,
@@ -614,31 +1041,144 @@ const styles = StyleSheet.create({
   successBody: {
     fontSize: 14,
     color: '#475569',
-    textAlign: 'justify',
+    textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   infoAlert: {
     backgroundColor: '#FFFBEB',
     borderColor: '#FCD34D',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 14,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   infoAlertTitle: {
-    color: '#92400E',
-    fontWeight: '700',
     fontSize: 14,
-    marginBottom: 4,
+    fontWeight: 'bold',
+    color: '#92400E',
   },
   infoAlertText: {
-    color: '#B45309',
     fontSize: 13,
+    color: '#B45309',
     lineHeight: 18,
-    textAlign: 'justify',
   },
   backToLoginBtn: {
+    marginTop: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
     width: '100%',
+    maxWidth: 380,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  dateInputsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  dateColSmall: {
+    width: 60,
+  },
+  dateColLarge: {
+    flex: 1,
+  },
+  dateInputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  dateNumInput: {
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    backgroundColor: '#F8FAFC',
+  },
+  monthChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    justifyContent: 'center',
+  },
+  monthChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+  },
+  monthChipSelected: {
+    backgroundColor: '#1E3A8A',
+    borderColor: '#1E3A8A',
+  },
+  monthChipText: {
+    fontSize: 10,
+    color: '#475569',
+  },
+  monthChipTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  modalCancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  modalConfirmBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    backgroundColor: '#1E3A8A',
+  },
+  modalConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
 });
