@@ -176,6 +176,30 @@ export const CasesService = {
   },
 
   /**
+   * Obtiene el detalle de un acta digital específica
+   */
+  async getCaseActDetails(actId: string): Promise<{ data: CaseAct | null; error: string | null }> {
+    try {
+      const { data, error } = await supabase
+        .from('case_acts')
+        .select(`
+          *,
+          creator:profiles!case_acts_created_by_fkey(*)
+        `)
+        .eq('id', actId)
+        .single();
+
+      if (error || !data) {
+        return { data: null, error: error?.message || 'Acta no encontrada.' };
+      }
+
+      return { data: data as CaseAct, error: null };
+    } catch (err: any) {
+      return { data: null, error: err.message };
+    }
+  },
+
+  /**
    * Agrega un acta digital de actuación (entrevista, mediación, etc.)
    */
   async addCaseAct(

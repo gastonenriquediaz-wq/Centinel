@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
 import { Input } from '../../../../src/components/ui/Input';
@@ -259,7 +260,12 @@ export default function AuthorityCaseDetailScreen() {
         ) : (
           <View style={styles.actsList}>
             {caseItem.acts.map((act) => (
-              <View key={act.id} style={styles.actItem}>
+              <TouchableOpacity
+                key={act.id}
+                style={styles.actItem}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/(authority)/cases/${caseItem.id}/acts/${act.id}` as any)}
+              >
                 <View style={styles.actHeaderRow}>
                   <Text style={styles.actTypeTag}>{getActTypeLabel(act.act_type)}</Text>
                   <Text style={styles.actDate}>{formatDate(act.occurred_at)}</Text>
@@ -268,11 +274,15 @@ export default function AuthorityCaseDetailScreen() {
                 <Text style={styles.actParticipants}>
                   <Text style={styles.bold}>Participantes:</Text> {act.participants}
                 </Text>
-                <Text style={styles.actContent}>{act.content}</Text>
+                <Text style={styles.actContent} numberOfLines={3}>{act.content}</Text>
                 <Text style={styles.actAuthor}>
                   Labrada por: {act.creator?.first_name} {act.creator?.last_name} ({act.creator?.position || 'Autoridad'})
                 </Text>
-              </View>
+                <View style={styles.actLinkRow}>
+                  <Text style={styles.actLinkText}>Ver acta completa</Text>
+                  <Ionicons name="chevron-forward" size={14} color="#1E3A8A" />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -456,6 +466,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   actTypeTag: {
     fontSize: 11,
@@ -468,7 +480,23 @@ const styles = StyleSheet.create({
   },
   actDate: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  actLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    gap: 4,
+  },
+  actLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E3A8A',
   },
   actTitle: {
     fontSize: 14,
