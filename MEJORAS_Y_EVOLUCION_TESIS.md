@@ -102,5 +102,9 @@ Este documento conserva la trazabilidad de todas las **funcionalidades agregadas
     * **Garantía de confidencialidad (Ley N° 26.892):** Explica claramente al alumno por qué el contenido de las actas labradas con terceros es reservado, asegurando que su caso está bajo seguimiento oficial.
   * **Contador de mensajes y aviso de nuevas respuestas** directamente sobre el botón *"Mensajes con las Autoridades"* y **Línea de Tiempo de 4 hitos**.
 
-### Punto 4 — Filtro por Curso en la Bandeja de Reportes Recibidos — [PENDIENTE DE IMPLEMENTACIÓN]
-* Incorporación de selector de curso en la bandeja de reportes de la autoridad para filtrar rápidamente las comunicaciones de una división específica (ej. *3° "A"*).
+### Punto 4 — Filtro por Curso en la Bandeja de Reportes Recibidos (`app/(authority)/reports/index.tsx`) — [IMPLEMENTADO]
+* **Objetivo:** Permitir al equipo directivo segmentar al instante la bandeja de reportes por curso y división sin necesidad de escribir en el buscador.
+* **Funcionalidades incluidas:**
+  * **Barra horizontal de chips de Cursos (`Filtrar por curso:`):** Lista todos los cursos de la institución (ej. `Todos los cursos`, `1.° "A" (Mañana)`, `3.° "B" (Tarde)`) ordenados por año y división.
+  * **Contadores dinámicos por curso:** Cada chip de curso muestra una insignia con la cantidad de reportes correspondientes (combinable en tiempo real con el filtro de estado y el buscador de texto).
+  * **Soporte de parámetro de ruta (`?courseId=...`):** Permite abrir la bandeja pre-filtrada en un curso específico y cuenta con botón rápido de **"Limpiar filtros"**.

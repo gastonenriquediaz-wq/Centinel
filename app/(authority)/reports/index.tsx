@@ -16,9 +16,10 @@ import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { ReportsService } from '../../../src/services/reports.service';
+import { CoursesService } from '../../../src/services/courses.service';
 import { MessagesService } from '../../../src/services/messages.service';
 import { useReportsStore } from '../../../src/store/reports.store';
-import { Report, ReportStatus } from '../../../src/types/database.types';
+import { Course, Report, ReportStatus } from '../../../src/types/database.types';
 
 type FilterType = 'all' | 'sent' | 'in_progress' | 'closed_no_case' | 'finalized';
 
@@ -33,6 +34,7 @@ const FILTER_TABS: { label: string; value: FilterType }[] = [
 export default function AuthorityReportsList() {
   const { profile } = useAuthStore();
   const [reports, setReports] = useState<Report[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [chatStats, setChatStats] = useState<{
     unreadCounts: Record<string, number>;
     totalCounts: Record<string, number>;
@@ -40,18 +42,22 @@ export default function AuthorityReportsList() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const { filter } = useLocalSearchParams<{ filter?: string }>();
+  const { filter, courseId } = useLocalSearchParams<{ filter?: string; courseId?: string }>();
   const [selectedFilter, setSelectedFilter] = useState<FilterType>(
     filter && ['sent', 'in_progress', 'closed_no_case', 'finalized', 'all'].includes(filter)
       ? (filter as FilterType)
       : 'all'
   );
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(courseId || 'all');
 
   useEffect(() => {
     if (filter && ['sent', 'in_progress', 'closed_no_case', 'finalized', 'all'].includes(filter)) {
       setSelectedFilter(filter as FilterType);
     }
-  }, [filter]);
+    if (courseId) {
+      setSelectedCourseId(courseId);
+    }
+  }, [filter, courseId]);
 
   // Estados de búsqueda, filtros y ordenamiento
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,9 +68,10 @@ export default function AuthorityReportsList() {
   const loadReports = async () => {
     if (!profile?.institution_id) return;
     try {
-      // Cargamos reportes, auditoría de lecturas y estadísticas de chat en paralelo
-      const [reportsRes, openedIds, chatStatsRes] = await Promise.all([
+      // Cargamos reportes, cursos, auditoría de lecturas y estadísticas de chat en paralelo
+      const [reportsRes, coursesRes, openedIds, chatStatsRes] = await Promise.all([
         ReportsService.getInstitutionReports(profile.institution_id),
+        CoursesService.getCourses(profile.institution_id).catch(() => [] as Course[]),
         ReportsService.getOpenedReportIds(profile.institution_id),
         MessagesService.getReportsChatStats(),
       ]);
@@ -73,6 +80,9 @@ export default function AuthorityReportsList() {
       }
       if (!reportsRes.error && reportsRes.data) {
         setReports(reportsRes.data);
+      }
+      if (coursesRes) {
+        setCourses(coursesRes);
       }
       if (chatStatsRes) {
         setChatStats(chatStatsRes);
@@ -124,6 +134,19 @@ export default function AuthorityReportsList() {
     }
   };
 
+  // Conteo de reportes por curso (respetando el filtro de estado activo)
+  const courseReportCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const baseList =
+      selectedFilter === 'all' ? reports : reports.filter((r) => r.status === selectedFilter);
+    for (const r of baseList) {
+      if (r.course_id) {
+        counts[r.course_id] = (counts[r.course_id] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [reports, selectedFilter]);
+
   // Filtrado y búsqueda reactivos
   const filteredAndSortedReports = useMemo(() => {
     let result = [...reports];
@@ -131,6 +154,11 @@ export default function AuthorityReportsList() {
     // 1. Filtro por estado
     if (selectedFilter !== 'all') {
       result = result.filter((r) => r.status === selectedFilter);
+    }
+
+    // 1.B Filtro por Curso / División
+    if (selectedCourseId !== 'all') {
+      result = result.filter((r) => r.course_id === selectedCourseId);
     }
 
     // 2. Filtro por buscador: estudiante o curso
@@ -164,7 +192,7 @@ export default function AuthorityReportsList() {
     });
 
     return result;
-  }, [reports, selectedFilter, searchQuery, sortAscending]);
+  }, [reports, selectedFilter, selectedCourseId, searchQuery, sortAscending]);
 
   const handleOpenReport = (reportId: string) => {
     useReportsStore.getState().markReportAsOpened(reportId);
@@ -253,8 +281,84 @@ export default function AuthorityReportsList() {
               })}
             </ScrollView>
 
-            {/* Ordenamiento por fecha */}
+            {/* Fila de Filtros por Curso / División */}
+            {courses.length > 0 && (
+              <View style={styles.courseFilterSection}>
+                <View style={styles.courseFilterHeaderRow}>
+                  <Ionicons name="school-outline" size={14} color="#475569" />
+                  <Text style={styles.courseFilterLabel}>Filtrar por curso:</Text>
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.filterScroll}
+                >
+                  <TouchableOpacity
+                    style={[
+                      styles.courseChip,
+                      selectedCourseId === 'all' && styles.courseChipSelected,
+                    ]}
+                    onPress={() => setSelectedCourseId('all')}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.courseChipText,
+                        selectedCourseId === 'all' && styles.courseChipTextSelected,
+                      ]}
+                    >
+                      Todos los cursos
+                    </Text>
+                  </TouchableOpacity>
+
+                  {courses.map((course) => {
+                    const isSelected = selectedCourseId === course.id;
+                    const count = courseReportCounts[course.id] || 0;
+                    return (
+                      <TouchableOpacity
+                        key={course.id}
+                        style={[styles.courseChip, isSelected && styles.courseChipSelected]}
+                        onPress={() =>
+                          setSelectedCourseId((prev) => (prev === course.id ? 'all' : course.id))
+                        }
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.courseChipText,
+                            isSelected && styles.courseChipTextSelected,
+                          ]}
+                        >
+                          {course.year}.° &quot;{course.division}&quot; ({course.shift})
+                        </Text>
+                        <View
+                          style={[
+                            styles.courseChipCountBadge,
+                            isSelected && styles.courseChipCountBadgeSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.courseChipCountText,
+                              isSelected && styles.courseChipCountTextSelected,
+                            ]}
+                          >
+                            {count}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Resumen de resultados y Ordenamiento por fecha */}
             <View style={styles.sortRow}>
+              <Text style={styles.resultsCounterText}>
+                {filteredAndSortedReports.length}{' '}
+                {filteredAndSortedReports.length === 1 ? 'reporte' : 'reportes'}
+              </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setSortAscending((prev) => !prev)}
@@ -285,15 +389,18 @@ export default function AuthorityReportsList() {
                 />
                 <Text style={styles.emptyTitle}>No se encontraron reportes</Text>
                 <Text style={styles.emptyText}>
-                  {searchQuery
-                    ? `No hay reportes que coincidan con "${searchQuery}". Probá buscar por nombre de estudiante o curso.`
+                  {searchQuery || selectedCourseId !== 'all'
+                    ? 'No hay reportes que coincidan con el curso o búsqueda seleccionados.'
                     : 'Los reportes recibidos de los alumnos aparecerán organizados en esta bandeja.'}
                 </Text>
-                {searchQuery.length > 0 && (
+                {(searchQuery.length > 0 || selectedCourseId !== 'all') && (
                   <Button
-                    title="Limpiar búsqueda"
+                    title="Limpiar filtros"
                     variant="outline"
-                    onPress={() => setSearchQuery('')}
+                    onPress={() => {
+                      setSearchQuery('');
+                      setSelectedCourseId('all');
+                    }}
                     style={{ marginTop: 12 }}
                   />
                 )}
@@ -568,11 +675,71 @@ const styles = StyleSheet.create({
   filterChipTextSelected: {
     color: '#FFFFFF',
   },
+  courseFilterSection: {
+    marginBottom: 12,
+  },
+  courseFilterHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 6,
+  },
+  courseFilterLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  courseChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 11,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    gap: 6,
+  },
+  courseChipSelected: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#2563EB',
+  },
+  courseChipText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  courseChipTextSelected: {
+    color: '#1D4ED8',
+    fontWeight: '700',
+  },
+  courseChipCountBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  courseChipCountBadgeSelected: {
+    backgroundColor: '#2563EB',
+  },
+  courseChipCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  courseChipCountTextSelected: {
+    color: '#FFFFFF',
+  },
   sortRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
+  },
+  resultsCounterText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#64748B',
   },
   sortButton: {
     flexDirection: 'row',
