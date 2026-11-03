@@ -898,28 +898,32 @@ async function generateAndSharePdfHtml(html: string, baseFileName: string, dialo
     return;
   }
 
-  const { uri } = await Print.printToFileAsync({
+  // En Expo Go (Android), Print.printToFileAsync guarda en context.cacheDir/Print,
+  // que está fuera del directorio con permisos de FilePermissionService para ExpoSharing.
+  // Al pedir base64: true, PrintModule lee el PDF directamente sin restricción de sandbox
+  // y luego lo escribimos en Paths.cache (appContext.cacheDirectory), donde ExpoSharing
+  // tiene permiso total de lectura y además conserva el nombre formal del archivo .pdf.
+  const { uri, base64 } = await Print.printToFileAsync({
     html,
-    base64: false,
+    base64: true,
   });
 
-  let finalUri = uri;
-  try {
-    const cleanName = `${sanitizeFileName(baseFileName) || 'Documento_Centinel'}.pdf`;
-    const sourceFile = new File(uri);
-    const targetFile = new File(Paths.cache, cleanName);
-    if (targetFile.exists) {
-      targetFile.delete();
+  let shareUri = uri;
+  if (base64) {
+    try {
+      const cleanName = `${sanitizeFileName(baseFileName) || 'Documento_Centinel'}.pdf`;
+      const targetFile = new File(Paths.cache, cleanName);
+      targetFile.create({ overwrite: true, intermediates: true });
+      targetFile.writeSync(base64, { encoding: 'base64' });
+      shareUri = targetFile.uri;
+    } catch {
+      shareUri = uri;
     }
-    sourceFile.moveSync(targetFile);
-    finalUri = targetFile.uri;
-  } catch {
-    finalUri = uri;
   }
 
   const canShare = await Sharing.isAvailableAsync();
   if (canShare) {
-    await Sharing.shareAsync(finalUri, {
+    await Sharing.shareAsync(shareUri, {
       mimeType: 'application/pdf',
       dialogTitle,
       UTI: 'com.adobe.pdf',
