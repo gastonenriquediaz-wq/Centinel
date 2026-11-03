@@ -302,8 +302,38 @@ export default function StudentReportsList() {
                         </Text>
                       </View>
 
-                      {/* Píldoras de adjuntos y de nueva respuesta */}
+                      {/* Píldoras de adjuntos, protocolo activo y nueva respuesta */}
                       <View style={styles.pillsContainer}>
+                        {item.case_id && (
+                          <View
+                            style={[
+                              styles.protocolActivePill,
+                              item.status === 'finalized' && styles.protocolResolvedPill,
+                            ]}
+                          >
+                            <Ionicons
+                              name={
+                                item.status === 'finalized'
+                                  ? 'checkmark-circle'
+                                  : 'shield-checkmark'
+                              }
+                              size={14}
+                              color={item.status === 'finalized' ? '#15803D' : '#0369A1'}
+                              style={styles.pillIcon}
+                            />
+                            <Text
+                              style={[
+                                styles.protocolActivePillText,
+                                item.status === 'finalized' && styles.protocolResolvedPillText,
+                              ]}
+                            >
+                              {item.status === 'finalized'
+                                ? 'Protocolo concluido y resuelto'
+                                : 'Protocolo de convivencia activo'}
+                            </Text>
+                          </View>
+                        )}
+
                         {item.attachments && item.attachments.length > 0 && (
                           <View style={styles.attachmentPill}>
                             <Ionicons name="attach-outline" size={14} color="#2563EB" style={styles.pillIcon} />
@@ -520,6 +550,28 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 6,
     marginTop: 8,
+  },
+  protocolActivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  protocolResolvedPill: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#BBF7D0',
+  },
+  protocolActivePillText: {
+    fontSize: 11,
+    color: '#0369A1',
+    fontWeight: '700',
+  },
+  protocolResolvedPillText: {
+    color: '#15803D',
   },
   attachmentPill: {
     flexDirection: 'row',

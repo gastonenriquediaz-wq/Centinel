@@ -91,8 +91,16 @@ Este documento conserva la trazabilidad de todas las **funcionalidades agregadas
   * **Recuadros Individuales de Firma Ológrafa:** Genera automáticamente un recuadro de firma punteado para cada interviniente registrado en la actuación (con líneas para *Firma*, *Aclaración*, *Rol/Vínculo* y *DNI*), más el recuadro de *Sello de la Institución y Firma de Dirección*.
   * **Generación y Compartido de Documentos PDF A4 (`src/utils/pdfExport.ts`):** Mediante `expo-print` y `expo-sharing`, al exportar un acta individual o el **Expediente Institucional Completo** (`app/(authority)/cases/[id]/index.tsx`), el sistema genera un archivo `.pdf` real (`Acta_Institucional_....pdf` / `Expediente_....pdf`) con maquetación institucional A4, tablas estructuradas de carátula y comparecientes, cuerpo de acuerdos, casilleros de firma ológrafa y opción de impresión directa.
 
-### Punto 3 — Retroalimentación Institucional para el Estudiante — [PENDIENTE DE IMPLEMENTACIÓN]
-* Indicador claro y tranquilizador en el detalle del reporte del alumno para que sepa que su comunicación está siendo atendida por el equipo directivo y que se activaron los protocolos de convivencia, resguardando la confidencialidad de las actuaciones internas.
+### Punto 3 — Retroalimentación Institucional para el Estudiante (`app/(student)/reports/[id]/index.tsx` y `app/(student)/reports/index.tsx`) — [IMPLEMENTADO]
+* **Objetivo:** Brindar tranquilidad, transparencia y acompañamiento al estudiante que realiza un reporte para que tenga certeza de que su comunicación avanza y que la escuela activó los protocolos de cuidado, sin vulnerar la reserva de las actas internas.
+* **Funcionalidades incluidas:**
+  * **Píldora de estado de protocolo en "Mis reportes" (`app/(student)/reports/index.tsx`):** Cuando un reporte se vincula a un expediente formal (`case_id`), la tarjeta muestra la insignia *"Protocolo de convivencia activo"* o *"Protocolo concluido y resuelto"*.
+  * **Tarjeta "Seguimiento Institucional" en el Detalle del Reporte (`app/(student)/reports/[id]/index.tsx`):**
+    * **Barra de progreso visual de 4 etapas:** `1. Enviado` → `2. En análisis` → `3. Protocolo` → `4. Cierre`.
+    * **Mensajes de acompañamiento contextualizados** según cada etapa (*Recepción confidencial*, *Evaluación inicial*, *Protocolo de Convivencia Escolar Activo*, *Intervención Concluida* o *Cierre administrativo*).
+    * **Constancia de resolución o motivo de cierre:** Muestra de forma destacada la síntesis de resolución institucional cuando el caso concluye o el motivo informado por la autoridad si se cierra sin apertura de expediente.
+    * **Garantía de confidencialidad (Ley N° 26.892):** Explica claramente al alumno por qué el contenido de las actas labradas con terceros es reservado, asegurando que su caso está bajo seguimiento oficial.
+  * **Contador de mensajes y aviso de nuevas respuestas** directamente sobre el botón *"Mensajes con las Autoridades"* y **Línea de Tiempo de 4 hitos**.
 
 ### Punto 4 — Filtro por Curso en la Bandeja de Reportes Recibidos — [PENDIENTE DE IMPLEMENTACIÓN]
 * Incorporación de selector de curso en la bandeja de reportes de la autoridad para filtrar rápidamente las comunicaciones de una división específica (ej. *3° "A"*).

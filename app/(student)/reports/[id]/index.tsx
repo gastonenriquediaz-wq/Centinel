@@ -17,7 +17,16 @@ import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { ReportsService } from '../../../../src/services/reports.service';
+import { supabase } from '../../../../src/services/supabase';
 import { Report, ReportStatus } from '../../../../src/types/database.types';
+
+interface LinkedCaseSummary {
+  id: string;
+  status: string;
+  resolution_summary: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export default function StudentReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,6 +34,9 @@ export default function StudentReportDetailScreen() {
   const { profile } = useAuthStore();
   const [report, setReport] = useState<Report | null>(null);
   const [reportCode, setReportCode] = useState<string>('REP-0001');
+  const [linkedCase, setLinkedCase] = useState<LinkedCaseSummary | null>(null);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [totalMessagesCount, setTotalMessagesCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -41,7 +53,43 @@ export default function StudentReportDetailScreen() {
       if (!error && data) {
         setReport(data);
 
-        // Obtener correlativo cronológico de reporte (REP-000X)
+        // 1. Obtener metadatos del expediente vinculado (si existe y RLS lo permite)
+        let caseInfo: LinkedCaseSummary | null = null;
+        if (data.case_id) {
+          const { data: cData } = await supabase
+            .from('cases')
+            .select('id, status, resolution_summary, created_at, updated_at')
+            .eq('id', data.case_id)
+            .maybeSingle();
+          if (cData) caseInfo = cData as LinkedCaseSummary;
+        }
+        if (!caseInfo) {
+          const { data: cByReport } = await supabase
+            .from('cases')
+            .select('id, status, resolution_summary, created_at, updated_at')
+            .eq('report_id', data.id)
+            .maybeSingle();
+          if (cByReport) caseInfo = cByReport as LinkedCaseSummary;
+        }
+        setLinkedCase(caseInfo);
+
+        // 2. Obtener estado de mensajes en el canal con autoridades
+        const { data: msgsData } = await supabase
+          .from('report_messages')
+          .select('id, sender_id, read_at')
+          .eq('report_id', data.id);
+
+        if (msgsData) {
+          setTotalMessagesCount(msgsData.length);
+          if (profile?.id) {
+            const unread = msgsData.filter(
+              (m: any) => m.sender_id !== profile.id && !m.read_at
+            ).length;
+            setUnreadMessagesCount(unread);
+          }
+        }
+
+        // 3. Obtener correlativo cronológico de reporte (REP-000X)
         if (profile?.id) {
           const { data: allReports } = await ReportsService.getStudentReports(profile.id);
           if (allReports && allReports.length > 0) {
@@ -167,6 +215,17 @@ export default function StudentReportDetailScreen() {
   const badge = getStatusBadge(report.status);
   const involved = parseInvolvedPersons(report.involved_persons);
   const isReceived = report.status !== 'sent';
+  const hasCase = Boolean(report.case_id || linkedCase);
+
+  // Nivel de avance de 1 a 4 para la barra de progreso institucional
+  const currentStepLevel =
+    report.status === 'sent'
+      ? 1
+      : report.status === 'in_progress' && !hasCase
+      ? 2
+      : report.status === 'in_progress' && hasCase
+      ? 3
+      : 4;
 
   return (
     <ScrollView
@@ -223,10 +282,198 @@ export default function StudentReportDetailScreen() {
         >
           <View style={styles.chatBtnContent}>
             <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" style={styles.chatBtnIcon} />
-            <Text style={styles.chatBtnText}>Mensajes con las Autoridades</Text>
+            <Text style={styles.chatBtnText}>
+              Mensajes con las Autoridades
+              {totalMessagesCount > 0 ? ` (${totalMessagesCount})` : ''}
+            </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+          <View style={styles.chatBtnRightRow}>
+            {unreadMessagesCount > 0 && (
+              <View style={styles.unreadChatBadge}>
+                <Text style={styles.unreadChatBadgeText}>
+                  {unreadMessagesCount} {unreadMessagesCount === 1 ? 'nuevo' : 'nuevos'}
+                </Text>
+              </View>
+            )}
+            <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+          </View>
         </TouchableOpacity>
+      </Card>
+
+      {/* 1.B Tarjeta de Retroalimentación y Acompañamiento Institucional */}
+      <Card style={styles.feedbackCard}>
+        <View style={styles.feedbackHeaderRow}>
+          <View
+            style={[
+              styles.feedbackIconWrap,
+              report.status === 'finalized'
+                ? { backgroundColor: '#DCFCE7' }
+                : hasCase
+                ? { backgroundColor: '#E0F2FE' }
+                : report.status === 'in_progress'
+                ? { backgroundColor: '#FEF3C7' }
+                : report.status === 'closed_no_case'
+                ? { backgroundColor: '#FEE2E2' }
+                : { backgroundColor: '#EFF6FF' },
+            ]}
+          >
+            <Ionicons
+              name={
+                report.status === 'finalized'
+                  ? 'checkmark-done-circle'
+                  : hasCase
+                  ? 'shield-checkmark'
+                  : report.status === 'in_progress'
+                  ? 'eye'
+                  : report.status === 'closed_no_case'
+                  ? 'information-circle'
+                  : 'paper-plane'
+              }
+              size={22}
+              color={
+                report.status === 'finalized'
+                  ? '#15803D'
+                  : hasCase
+                  ? '#0284C7'
+                  : report.status === 'in_progress'
+                  ? '#D97706'
+                  : report.status === 'closed_no_case'
+                  ? '#DC2626'
+                  : '#2563EB'
+              }
+            />
+          </View>
+          <View style={styles.feedbackHeaderTextCol}>
+            <Text style={styles.feedbackEyebrow}>Seguimiento Institucional</Text>
+            <Text style={styles.feedbackTitle}>
+              {report.status === 'finalized'
+                ? 'Intervención Institucional Concluida'
+                : hasCase
+                ? 'Protocolo de Convivencia Escolar Activo'
+                : report.status === 'in_progress'
+                ? 'El Equipo Directivo está evaluando tu reporte'
+                : report.status === 'closed_no_case'
+                ? 'Reporte evaluado y cerrado sin expediente'
+                : 'Comunicación recibida en canal confidencial'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Barra de Progreso de 4 Etapas */}
+        <View style={styles.stepperWrap}>
+          {[
+            { step: 1, label: 'Enviado' },
+            { step: 2, label: 'En análisis' },
+            { step: 3, label: 'Protocolo' },
+            { step: 4, label: 'Cierre' },
+          ].map((item, idx) => {
+            const reached =
+              report.status === 'closed_no_case'
+                ? item.step !== 3
+                : currentStepLevel >= item.step;
+            const isCurrent =
+              (report.status === 'sent' && item.step === 1) ||
+              (report.status === 'in_progress' && !hasCase && item.step === 2) ||
+              (report.status === 'in_progress' && hasCase && item.step === 3) ||
+              ((report.status === 'finalized' || report.status === 'closed_no_case') &&
+                item.step === 4);
+
+            return (
+              <React.Fragment key={item.step}>
+                <View style={styles.stepItemCol}>
+                  <View
+                    style={[
+                      styles.stepCircle,
+                      reached && styles.stepCircleReached,
+                      isCurrent && styles.stepCircleCurrent,
+                    ]}
+                  >
+                    {reached ? (
+                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.stepNumberText}>{item.step}</Text>
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      styles.stepLabelText,
+                      reached && styles.stepLabelTextReached,
+                      isCurrent && styles.stepLabelTextCurrent,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </View>
+                {idx < 3 && (
+                  <View
+                    style={[
+                      styles.stepConnectorLine,
+                      currentStepLevel > item.step && styles.stepConnectorLineActive,
+                    ]}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </View>
+
+        {/* Mensaje explicativo personalizado para el estudiante */}
+        <View style={styles.feedbackBodyBox}>
+          <Text style={styles.feedbackBodyText}>
+            {report.status === 'sent' &&
+              'Tu reporte ya ingresó de forma segura al sistema del colegio. Una autoridad escolar lo revisará a la brevedad. Si recordás algún dato adicional, podés escribirlo en "Mensajes con las Autoridades".'}
+            {report.status === 'in_progress' &&
+              !hasCase &&
+              'Una autoridad educativa de tu colegio ya tomó conocimiento de lo que informaste y se encuentra realizando las primeras averiguaciones preventivas con absoluta reserva.'}
+            {report.status === 'in_progress' &&
+              hasCase &&
+              'Tu reporte dio lugar a la apertura formal de un Expediente de Convivencia Escolar. El equipo directivo está llevando adelante actuaciones institucionales (entrevistas, citaciones o acuerdos pedagógicos) para abordar la situación y cuidarte.'}
+            {report.status === 'finalized' &&
+              'El equipo directivo completó las actuaciones del protocolo de convivencia vinculadas a tu reporte y dio por concluida la intervención institucional.'}
+            {report.status === 'closed_no_case' &&
+              'El equipo directivo evaluó la situación informada y determinó su cierre administrativo sin necesidad de abrir un expediente formal de caso.'}
+          </Text>
+        </View>
+
+        {/* Síntesis de resolución (si está finalizado y tiene resumen) */}
+        {report.status === 'finalized' && linkedCase?.resolution_summary && (
+          <View style={styles.resolutionSummaryBox}>
+            <View style={styles.resolutionSummaryHeader}>
+              <Ionicons name="document-text-outline" size={16} color="#15803D" />
+              <Text style={styles.resolutionSummaryTitle}>
+                Constancia de resolución institucional
+              </Text>
+            </View>
+            <Text style={styles.resolutionSummaryText}>
+              {linkedCase.resolution_summary}
+            </Text>
+          </View>
+        )}
+
+        {/* Motivo de cierre sin caso (si está cerrado sin apertura) */}
+        {report.status === 'closed_no_case' && report.close_reason && (
+          <View style={styles.closeReasonBox}>
+            <View style={styles.resolutionSummaryHeader}>
+              <Ionicons name="chatbox-ellipses-outline" size={16} color="#B91C1C" />
+              <Text style={[styles.resolutionSummaryTitle, { color: '#B91C1C' }]}>
+                Motivo informado por la autoridad escolar
+              </Text>
+            </View>
+            <Text style={[styles.resolutionSummaryText, { color: '#7F1D1D' }]}>
+              {report.close_reason}
+            </Text>
+          </View>
+        )}
+
+        {/* Garantía de confidencialidad cuando hay protocolo activo */}
+        {hasCase && (
+          <View style={styles.confidentialityGuaranteeRow}>
+            <Ionicons name="shield-half-outline" size={16} color="#0369A1" />
+            <Text style={styles.confidentialityGuaranteeText}>
+              Por resguardo de la privacidad escolar (Ley N° 26.892), el contenido detallado de las actas firmadas con otros alumnos o familias es reservado, pero tu situación cuenta con seguimiento oficial.
+            </Text>
+          </View>
+        )}
       </Card>
 
       {/* 2. Detalles de la Situación */}
@@ -441,48 +688,86 @@ export default function StudentReportDetailScreen() {
               <Text style={styles.timelineDate}>
                 {isReceived ? formatDate(report.updated_at) : 'Pendiente'}
               </Text>
-              <Text style={styles.timelineStepTitle}>Reporte recibido</Text>
+              <Text style={styles.timelineStepTitle}>Reporte recibido por el Equipo Directivo</Text>
               <Text style={styles.timelineStepDesc}>
                 {isReceived
-                  ? 'Una autoridad educativa abrió el reporte.'
+                  ? 'Una autoridad educativa abrió el reporte y tomó conocimiento de la situación.'
                   : 'Pendiente de apertura por una autoridad educativa.'}
               </Text>
             </View>
           </View>
 
-          {/* Nodo 3: En revisión / Conclusión */}
+          {/* Nodo 3: Apertura de Protocolo de Convivencia (si aplica o en seguimiento) */}
+          {report.status !== 'closed_no_case' && (
+            <View style={styles.timelineNode}>
+              <View style={styles.timelineTrack}>
+                <View
+                  style={[
+                    styles.timelineDot,
+                    hasCase ? styles.timelineDotActive : styles.timelineDotInactive,
+                  ]}
+                />
+                <View style={styles.timelineLine} />
+              </View>
+              <View style={styles.timelineContent}>
+                <Text style={styles.timelineDate}>
+                  {hasCase
+                    ? formatDate(linkedCase?.created_at || report.updated_at)
+                    : report.status === 'in_progress'
+                    ? 'En evaluación preliminar'
+                    : 'Pendiente'}
+                </Text>
+                <Text style={styles.timelineStepTitle}>
+                  {hasCase
+                    ? 'Protocolo de Convivencia Escolar activado'
+                    : 'Intervención y protocolo institucional'}
+                </Text>
+                <Text style={styles.timelineStepDesc}>
+                  {hasCase
+                    ? 'Se abrió un expediente formal de caso con actuaciones institucionales (entrevistas, citaciones y seguimiento).'
+                    : 'Si la situación requiere actuaciones formales, se vinculará a un expediente de convivencia.'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Nodo 4: Estado actual / Conclusión */}
           <View style={styles.timelineNode}>
             <View style={styles.timelineTrack}>
               <View
                 style={[
                   styles.timelineDot,
-                  report.status !== 'sent' ? styles.timelineDotActive : styles.timelineDotInactive,
+                  report.status === 'finalized' || report.status === 'closed_no_case'
+                    ? styles.timelineDotActive
+                    : styles.timelineDotInactive,
                 ]}
               />
             </View>
             <View style={styles.timelineContent}>
               <Text style={styles.timelineDate}>
-                {report.status !== 'sent' ? formatDate(report.updated_at) : 'Pendiente'}
+                {report.status === 'finalized' || report.status === 'closed_no_case'
+                  ? formatDate(linkedCase?.updated_at || report.updated_at)
+                  : 'En curso'}
               </Text>
               <Text style={styles.timelineStepTitle}>
                 {report.status === 'in_progress'
-                  ? 'En revisión'
+                  ? 'Seguimiento activo'
                   : report.status === 'closed_no_case'
-                  ? 'Cerrado sin apertura'
+                  ? 'Cerrado sin apertura de expediente'
                   : report.status === 'finalized'
-                  ? 'Finalizado'
-                  : 'En espera de revisión'}
+                  ? 'Intervención institucional finalizada'
+                  : 'Resolución institucional'}
               </Text>
               <Text style={styles.timelineStepDesc}>
                 {report.status === 'in_progress'
-                  ? 'El equipo directivo está analizando la situación.'
+                  ? 'El equipo directivo continúa trabajando en la situación.'
                   : report.status === 'closed_no_case'
                   ? report.close_reason
-                    ? `Motivo: ${report.close_reason}`
+                    ? `Motivo informado: ${report.close_reason}`
                     : 'El equipo directivo evaluó y cerró el reporte sin apertura formal de caso.'
                   : report.status === 'finalized'
-                  ? 'El proceso vinculado al reporte ha finalizado satisfactoriamente.'
-                  : 'El reporte será evaluado por las autoridades escolares.'}
+                  ? 'Las actuaciones y acuerdos de convivencia del caso han concluido satisfactoriamente.'
+                  : 'Se actualizará cuando concluya la intervención del equipo directivo.'}
               </Text>
             </View>
           </View>
@@ -692,6 +977,181 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  chatBtnRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  unreadChatBadge: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  unreadChatBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  feedbackCard: {
+    padding: 18,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    gap: 14,
+  },
+  feedbackHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  feedbackIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  feedbackHeaderTextCol: {
+    flex: 1,
+  },
+  feedbackEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563EB',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  feedbackTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  stepperWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  stepItemCol: {
+    alignItems: 'center',
+    width: 62,
+  },
+  stepCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  stepCircleReached: {
+    backgroundColor: '#2563EB',
+  },
+  stepCircleCurrent: {
+    backgroundColor: '#1E3A8A',
+    borderWidth: 2,
+    borderColor: '#93C5FD',
+  },
+  stepNumberText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  stepLabelText: {
+    fontSize: 10.5,
+    color: '#64748B',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  stepLabelTextReached: {
+    color: '#1E293B',
+  },
+  stepLabelTextCurrent: {
+    color: '#1E3A8A',
+    fontWeight: '800',
+  },
+  stepConnectorLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#CBD5E1',
+    marginBottom: 14,
+  },
+  stepConnectorLineActive: {
+    backgroundColor: '#2563EB',
+  },
+  feedbackBodyBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  feedbackBodyText: {
+    fontSize: 13,
+    color: '#334155',
+    lineHeight: 19,
+    textAlign: 'justify',
+  },
+  resolutionSummaryBox: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    gap: 6,
+  },
+  closeReasonBox: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: 6,
+  },
+  resolutionSummaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  resolutionSummaryTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#15803D',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  resolutionSummaryText: {
+    fontSize: 13,
+    color: '#14532D',
+    lineHeight: 19,
+    textAlign: 'justify',
+  },
+  confidentialityGuaranteeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    gap: 8,
+  },
+  confidentialityGuaranteeText: {
+    flex: 1,
+    fontSize: 11.5,
+    color: '#0369A1',
+    lineHeight: 16,
+    textAlign: 'justify',
   },
   card: {
     padding: 18,
