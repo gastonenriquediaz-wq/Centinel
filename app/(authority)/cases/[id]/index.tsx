@@ -18,6 +18,7 @@ import { Button } from '../../../../src/components/ui/Button';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { CasesService } from '../../../../src/services/cases.service';
 import { Case, CaseStatus, ActType, CaseInvolvedStudent } from '../../../../src/types/database.types';
+import { shareCaseDossierAsPdf } from '../../../../src/utils/pdfExport';
 
 export default function AuthorityCaseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -232,77 +233,17 @@ export default function AuthorityCaseDetailScreen() {
 
   const handleExportCaseDossier = async () => {
     try {
-      const instName = (institution?.name || 'ESTABLECIMIENTO EDUCATIVO').toUpperCase();
-      const statusText = badge.label;
-      const studentsLines =
-        involvedStudents.length > 0
-          ? involvedStudents
-              .map(
-                (s, i) =>
-                  `   ${i + 1}. ${s.name} — ${s.role}${s.course ? ` (${s.course})` : ''}`
-              )
-              .join('\n')
-          : '   • Sin estudiantes adicionales registrados.';
-
-      const actsLines =
-        actsList.length > 0
-          ? actsList
-              .map(
-                (a, i) =>
-                  `   [${i + 1}] ${a.title} (${formatDate(a.occurred_at)})\n` +
-                  `       Modalidad: ${getActTypeLabel(a.act_type, a.title)}\n` +
-                  `       Intervinientes: ${a.participants}\n` +
-                  `       Detalle: ${a.content}`
-              )
-              .join('\n\n')
-          : '   • Aún no se han labrado actuaciones institucionales.';
-
-      const resolutionSection =
-        caseItem.status === 'resolved' && caseItem.resolution_summary
-          ? `\n--------------------------------------------------\n` +
-            `4. RESOLUCIÓN Y ACUERDOS DE CONVIVENCIA\n` +
-            `--------------------------------------------------\n` +
-            `${caseItem.resolution_summary}\n`
-          : '';
-
-      const fullDossierText =
-        `==================================================\n` +
-        `${instName}\n` +
-        `EXPEDIENTE INSTITUCIONAL DE CONVIVENCIA ESCOLAR\n` +
-        `==================================================\n\n` +
-        `• CARÁTULA: ${caseItem.title}\n` +
-        `• ESTADO ACTUAL: ${statusText}\n` +
-        `• FECHA DE APERTURA: ${formatDate(caseItem.created_at)}\n\n` +
-        `--------------------------------------------------\n` +
-        `1. REPORTE DE ORIGEN\n` +
-        `--------------------------------------------------\n` +
-        `• Situación: ${caseItem.report?.situation_type || 'No especificada'}\n` +
-        `• Lugar: ${caseItem.report?.location || 'No especificado'}\n` +
-        `• Frecuencia: ${caseItem.report?.frequency || 'No especificada'}\n` +
-        `• Relato inicial: ${caseItem.report?.description || 'Sin descripción'}\n\n` +
-        `--------------------------------------------------\n` +
-        `2. ESTUDIANTES INVOLUCRADOS\n` +
-        `--------------------------------------------------\n` +
-        `${studentsLines}\n\n` +
-        `--------------------------------------------------\n` +
-        `3. ACTUACIONES INSTITUCIONALES LABRADAS (${actsList.length})\n` +
-        `--------------------------------------------------\n` +
-        `${actsLines}\n` +
-        `${resolutionSection}\n` +
-        `--------------------------------------------------\n` +
-        `FIRMAS Y CERTIFICACIÓN DIRECTIVA\n` +
-        `--------------------------------------------------\n\n` +
-        `_________________________________________\n` +
-        `Firma y Sello de Dirección / Autoridad Actuante\n` +
-        `${profile?.first_name || ''} ${profile?.last_name || ''} (${profile?.position || 'Autoridad Escolar'})\n` +
-        `==================================================`;
-
-      await Share.share({
-        title: `Expediente - ${caseItem.title}`,
-        message: fullDossierText,
+      await shareCaseDossierAsPdf({
+        caseItem,
+        institution,
+        profile,
+        statusLabel: badge.label,
       });
     } catch (err: any) {
-      Alert.alert('Error al exportar', err.message || 'No se pudo exportar el expediente.');
+      Alert.alert(
+        'Error al generar PDF',
+        err.message || 'No se pudo generar el documento PDF del expediente.'
+      );
     }
   };
 

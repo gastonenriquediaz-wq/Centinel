@@ -18,6 +18,7 @@ import { useAuthStore } from '../../../../../src/store/auth.store';
 import { CasesService } from '../../../../../src/services/cases.service';
 import { Case, CaseAct } from '../../../../../src/types/database.types';
 import { getActTypeLabel } from '../../../../../src/utils/textMigration';
+import { shareActAsPdf, printActDirectly } from '../../../../../src/utils/pdfExport';
 
 export default function AuthorityCaseActDetailScreen() {
   const { id, actId } = useLocalSearchParams<{ id: string; actId: string }>();
@@ -25,6 +26,7 @@ export default function AuthorityCaseActDetailScreen() {
   const [act, setAct] = useState<CaseAct | null>(null);
   const [caseItem, setCaseItem] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [viewMode, setViewMode] = useState<'digital' | 'printable'>('digital');
 
   useEffect(() => {
@@ -110,81 +112,41 @@ export default function AuthorityCaseActDetailScreen() {
       .filter((x): x is { role: string; name: string } => x !== null);
   }, [act]);
 
-  // Generar texto formal completo para imprimir / exportar
-  const buildPrintableDocumentText = () => {
-    if (!act) return '';
-    const instName = institution?.name || 'ESTABLECIMIENTO EDUCATIVO';
-    const instAddress = institution?.address ? `Dirección: ${institution.address}\n` : '';
-    const actTypeLabel = getActTypeLabel(act.act_type, act.title);
-    const dateFormatted = formatDateTime(act.occurred_at);
-    const creatorName = act.creator
-      ? `${act.creator.first_name} ${act.creator.last_name} (${act.creator.position || 'Autoridad Escolar'})`
-      : 'Autoridad Escolar';
-
-    const participantsLines =
-      parsedParticipants.length > 0
-        ? parsedParticipants.map((p, idx) => `   ${idx + 1}. [${p.role}] ${p.name}`).join('\n')
-        : `   • ${act.participants}`;
-
-    const signatureBlocks =
-      parsedParticipants.length > 0
-        ? parsedParticipants
-            .map(
-              (p) =>
-                `\n\n_________________________________________\nFirma: ${p.name}\nCarácter / Rol: ${p.role}\nDNI N°: _______________________________`
-            )
-            .join('\n')
-        : `\n\n_________________________________________\nFirma y Aclaración del Compareciente\nDNI N°: _______________________________`;
-
-    return (
-      `==================================================\n` +
-      `${instName.toUpperCase()}\n` +
-      `${instAddress}` +
-      `PROTOCOLO DE CONVIVENCIA ESCOLAR (LEY N° 26.892)\n` +
-      `==================================================\n\n` +
-      `ACTA DE ACTUACIÓN INSTITUCIONAL\n\n` +
-      `• EXPEDIENTE VINCULADO: ${caseItem?.title || 'Intervención Escolar'}\n` +
-      `• MODALIDAD DE ACTUACIÓN: ${actTypeLabel}\n` +
-      `• TÍTULO: ${act.title}\n` +
-      `• FECHA Y HORA: ${dateFormatted}\n` +
-      `• AUTORIDAD RESPONSABLE: ${creatorName}\n\n` +
-      `--------------------------------------------------\n` +
-      `1. PERSONAS PRESENTES / INTERVINIENTES\n` +
-      `--------------------------------------------------\n` +
-      `En las instalaciones de ${instName}, en la fecha y hora indicadas, comparecen las siguientes personas:\n` +
-      `${participantsLines}\n\n` +
-      `--------------------------------------------------\n` +
-      `2. DESARROLLO DE LA ACTUACIÓN, ACUERDOS Y ACCIONES\n` +
-      `--------------------------------------------------\n` +
-      `${act.content}\n\n` +
-      `--------------------------------------------------\n` +
-      `3. RATIFICACIÓN Y FIRMAS OLÓGRAFAS DE CONFORMIDAD\n` +
-      `--------------------------------------------------\n` +
-      `No siendo para más, previa lectura en voz alta y ratificación íntegra de lo expuesto en la presente acta, firman al pie de conformidad los comparecientes junto a la autoridad educativa actuante:\n` +
-      `${signatureBlocks}\n\n` +
-      `_________________________________________\n` +
-      `Sello del Establecimiento y Firma Directiva\n` +
-      `Responsable: ${creatorName}\n` +
-      `Registro Digital Centinel: ${formatDateTime(act.created_at)}\n` +
-      `==================================================`
-    );
-  };
-
-  const handleExportOrPrint = async () => {
+  const handleExportPdf = async () => {
+    if (!act || exportingPdf) return;
+    setExportingPdf(true);
     try {
-      const docText = buildPrintableDocumentText();
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.print === 'function') {
-        setViewMode('printable');
-        setTimeout(() => window.print(), 250);
-        return;
-      }
-
-      await Share.share({
-        title: `Acta Institucional - ${act?.title || 'Centinel'}`,
-        message: docText,
+      await shareActAsPdf({
+        act,
+        caseItem,
+        institution,
       });
     } catch (err: any) {
-      Alert.alert('Error al exportar', err.message || 'No se pudo compartir el documento.');
+      Alert.alert(
+        'Error al generar PDF',
+        err.message || 'No se pudo generar o compartir el documento PDF.'
+      );
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handlePrintPdf = async () => {
+    if (!act || exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      await printActDirectly({
+        act,
+        caseItem,
+        institution,
+      });
+    } catch (err: any) {
+      Alert.alert(
+        'Error al imprimir',
+        err.message || 'No se pudo abrir la vista de impresión.'
+      );
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -467,25 +429,44 @@ export default function AuthorityCaseActDetailScreen() {
         </View>
       )}
 
-      {/* Botón Principal para Compartir / Exportar para Impresión */}
-      <TouchableOpacity
-        style={styles.exportPrintBtn}
-        onPress={handleExportOrPrint}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-        <Text style={styles.exportPrintBtnText}>
-          Compartir / Exportar Acta con Espacio para Firmas
-        </Text>
-      </TouchableOpacity>
+      {/* Acciones para Compartir PDF o Imprimir */}
+      <View style={styles.pdfActionsWrap}>
+        <TouchableOpacity
+          style={[styles.exportPrintBtn, exportingPdf && { opacity: 0.7 }]}
+          onPress={handleExportPdf}
+          disabled={exportingPdf}
+          activeOpacity={0.8}
+        >
+          {exportingPdf ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Ionicons name="document-text-outline" size={20} color="#FFFFFF" />
+          )}
+          <Text style={styles.exportPrintBtnText}>
+            {exportingPdf ? 'Generando PDF...' : 'Compartir / Descargar Acta en PDF'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.directPrintBtn, exportingPdf && { opacity: 0.7 }]}
+          onPress={handlePrintPdf}
+          disabled={exportingPdf}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="print-outline" size={18} color="#1E3A8A" />
+          <Text style={styles.directPrintBtnText}>
+            Imprimir Acta directamente (Formato A4 Oficial)
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Callout Informativo de Reserva */}
       <View style={styles.noticeCallout}>
         <Ionicons name="lock-closed-outline" size={20} color="#1E3A8A" style={styles.noticeIcon} />
         <View style={styles.noticeTextContainer}>
-          <Text style={styles.noticeTitle}>Validez documental y protocolo físico</Text>
+          <Text style={styles.noticeTitle}>Documento PDF oficial con espacio para firmas</Text>
           <Text style={styles.noticeDesc}>
-            Podés alternar a la pestaña "Protocolo con Firmas" o exportar el documento formal para imprimirlo y recabar las firmas ológrafas de los padres, tutores y alumnos en el legajo físico.
+            El archivo PDF se genera con membrete del colegio, encuadre de la Ley N° 26.892 y casilleros individuales de firma ológrafa y aclaración para adjuntar al legajo físico.
           </Text>
         </View>
       </View>
@@ -915,6 +896,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
+  pdfActionsWrap: {
+    gap: 10,
+  },
   exportPrintBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -928,6 +912,23 @@ const styles = StyleSheet.create({
   exportPrintBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '700',
+  },
+  directPrintBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  directPrintBtnText: {
+    color: '#1E3A8A',
+    fontSize: 13.5,
     fontWeight: '700',
   },
   noticeCallout: {
