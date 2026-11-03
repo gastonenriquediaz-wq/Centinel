@@ -970,3 +970,478 @@ export async function shareCaseDossierAsPdf(params: {
     `Exportar Expediente Institucional (PDF) - ${params.caseItem.title}`
   );
 }
+
+export interface StatisticsPdfInput {
+  institution?: Institution | null;
+  profile?: Profile | null;
+  shiftFilter: string;
+  totalStudentsCount: number;
+  kpis: {
+    totalReports: number;
+    sentCount: number;
+    inProgressCount: number;
+    finalizedCount: number;
+    closedNoCaseCount: number;
+    attendedCount: number;
+    attentionRate: number;
+    totalCases: number;
+    openCases: number;
+    trackingCases: number;
+    resolvedCases: number;
+    caseResolutionRate: number;
+  };
+  situationStats: {
+    label: string;
+    count: number;
+    percentage: number;
+    color: string;
+  }[];
+  locationStats: {
+    label: string;
+    count: number;
+    percentage: number;
+    color: string;
+  }[];
+  frequencyStats: {
+    daily: number;
+    frequent: number;
+    several: number;
+    once: number;
+    highRecurrence: number;
+    highRecurrencePct: number;
+  };
+  courseStats: {
+    course: {
+      year: number;
+      division: string;
+      shift: string;
+      school_year: number;
+      estimated_students: number;
+    };
+    reportsCount: number;
+    activeCasesCount: number;
+  }[];
+}
+
+function buildStatisticsReportHtml(params: StatisticsPdfInput): string {
+  const {
+    institution,
+    profile,
+    shiftFilter,
+    totalStudentsCount,
+    kpis,
+    situationStats,
+    locationStats,
+    frequencyStats,
+    courseStats,
+  } = params;
+
+  const instName = escapeHtml(institution?.name || 'ESTABLECIMIENTO EDUCATIVO');
+  const instAddress = institution?.address ? escapeHtml(institution.address) : '';
+  const instCode = institution?.identification_code ? escapeHtml(institution.identification_code) : '';
+  const emittedAt = escapeHtml(formatFormalDateTime(new Date().toISOString()));
+  const shiftLabel =
+    shiftFilter === 'Todos' ? 'Todos los turnos' : `Turno ${escapeHtml(shiftFilter)}`;
+  const authorityName = profile
+    ? escapeHtml(`${profile.first_name} ${profile.last_name}`)
+    : 'Autoridad Escolar';
+  const authorityRole = escapeHtml(profile?.position || 'Equipo Directivo');
+
+  const topSituation = situationStats.find((s) => s.count > 0);
+  const topLocation = locationStats.find((l) => l.count > 0);
+  const topCourse = courseStats.find((c) => c.reportsCount > 0);
+
+  const situationRowsHtml = situationStats
+    .map(
+      (s) => `
+      <tr>
+        <td style="font-weight:600;color:#0F172A;">${escapeHtml(s.label)}</td>
+        <td style="width:36%;">
+          <div style="background-color:#F1F5F9;height:9px;border-radius:4px;overflow:hidden;">
+            <div style="width:${Math.max(s.percentage, s.count > 0 ? 6 : 0)}%;height:100%;background-color:${s.color};"></div>
+          </div>
+        </td>
+        <td style="text-align:center;font-weight:700;">${s.count}</td>
+        <td style="text-align:right;font-weight:700;color:#1E3A8A;">${s.percentage}%</td>
+      </tr>`
+    )
+    .join('');
+
+  const locationRowsHtml = locationStats
+    .map(
+      (l) => `
+      <tr>
+        <td style="font-weight:600;color:#0F172A;">${escapeHtml(l.label)}</td>
+        <td style="width:36%;">
+          <div style="background-color:#F1F5F9;height:9px;border-radius:4px;overflow:hidden;">
+            <div style="width:${Math.max(l.percentage, l.count > 0 ? 6 : 0)}%;height:100%;background-color:${l.color};"></div>
+          </div>
+        </td>
+        <td style="text-align:center;font-weight:700;">${l.count}</td>
+        <td style="text-align:right;font-weight:700;color:#1E3A8A;">${l.percentage}%</td>
+      </tr>`
+    )
+    .join('');
+
+  const courseRowsHtml =
+    courseStats.length > 0
+      ? courseStats
+          .map(
+            ({ course, reportsCount, activeCasesCount }, idx) => `
+            <tr>
+              <td style="text-align:center;font-weight:700;">${idx + 1}</td>
+              <td><strong>${course.year}.° "${escapeHtml(course.division)}"</strong></td>
+              <td>Turno ${escapeHtml(course.shift)}</td>
+              <td style="text-align:center;">${course.school_year}</td>
+              <td style="text-align:center;font-weight:800;color:#1E3A8A;">${reportsCount}</td>
+              <td style="text-align:center;color:${activeCasesCount > 0 ? '#D97706' : '#64748B'};font-weight:700;">
+                ${activeCasesCount}
+              </td>
+            </tr>`
+          )
+          .join('')
+      : `<tr><td colspan="6" style="text-align:center;color:#64748B;">No hay cursos registrados para este filtro.</td></tr>`;
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Informe Estadístico de Convivencia Escolar - ${instName}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 15mm 16mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #0F172A;
+      margin: 0;
+      padding: 0;
+      font-size: 10pt;
+      line-height: 1.42;
+      background-color: #FFFFFF;
+    }
+    .document-border {
+      border: 1.5px solid #1E3A8A;
+      padding: 16px 20px 20px 20px;
+      border-radius: 4px;
+    }
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-bottom: 2px solid #1E3A8A;
+      margin-bottom: 12px;
+    }
+    .header-left { width: 66%; vertical-align: top; padding-bottom: 8px; }
+    .header-right { width: 34%; vertical-align: top; text-align: right; padding-bottom: 8px; }
+    .inst-badge {
+      display: inline-block;
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #1E3A8A;
+      background-color: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      padding: 2px 8px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .inst-name { font-size: 14pt; font-weight: 800; color: #0F172A; text-transform: uppercase; margin: 2px 0; }
+    .inst-sub { font-size: 8.5pt; color: #475569; margin: 0; }
+    .folio-box {
+      display: inline-block;
+      border: 1px solid #CBD5E1;
+      background-color: #F8FAFC;
+      border-radius: 4px;
+      padding: 5px 10px;
+      text-align: right;
+    }
+    .folio-label { font-size: 7pt; font-weight: 700; color: #64748B; text-transform: uppercase; }
+    .folio-value { font-size: 9.5pt; font-weight: 800; color: #1E3A8A; }
+    .law-banner {
+      background-color: #1E3A8A;
+      color: #FFFFFF;
+      text-align: center;
+      padding: 6px 12px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+    .law-banner-title { font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; }
+    .law-banner-sub { font-size: 7.8pt; color: #DBEAFE; margin-top: 2px; }
+    .kpi-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 8px 0;
+      margin: 0 -8px 12px -8px;
+    }
+    .kpi-box {
+      width: 25%;
+      border: 1px solid #CBD5E1;
+      border-top: 3px solid #1E3A8A;
+      border-radius: 4px;
+      padding: 8px 10px;
+      background-color: #F8FAFC;
+      vertical-align: top;
+    }
+    .kpi-title { font-size: 7.5pt; font-weight: 700; color: #64748B; text-transform: uppercase; }
+    .kpi-num { font-size: 15pt; font-weight: 800; color: #0F172A; margin: 2px 0; }
+    .kpi-sub { font-size: 7.5pt; color: #475569; }
+    .insight-box {
+      background-color: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      border-left: 4px solid #16A34A;
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      font-size: 9pt;
+      color: #14532D;
+    }
+    .section-header {
+      background-color: #F1F5F9;
+      border-left: 4px solid #1E3A8A;
+      padding: 4px 10px;
+      font-size: 9pt;
+      font-weight: 800;
+      color: #1E3A8A;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-top: 10px;
+      margin-bottom: 6px;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+      font-size: 8.8pt;
+    }
+    .data-table th, .data-table td {
+      border: 1px solid #CBD5E1;
+      padding: 5px 8px;
+      vertical-align: middle;
+    }
+    .data-table th {
+      background-color: #EFF6FF;
+      color: #1E3A8A;
+      font-size: 8pt;
+      text-transform: uppercase;
+      text-align: left;
+    }
+    .freq-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+      font-size: 8.8pt;
+    }
+    .freq-table td {
+      border: 1px solid #CBD5E1;
+      padding: 6px 8px;
+      text-align: center;
+      width: 20%;
+    }
+    .authority-footer-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      page-break-inside: avoid;
+    }
+    .authority-footer-table td {
+      width: 50%;
+      border: 1px solid #94A3B8;
+      background-color: #F8FAFC;
+      padding: 8px 12px;
+      vertical-align: bottom;
+    }
+    .auth-sig-space { height: 48px; }
+    .auth-sig-line {
+      border-top: 1.5px solid #1E3A8A;
+      padding-top: 4px;
+      text-align: center;
+      font-size: 8pt;
+      font-weight: 800;
+      color: #1E3A8A;
+      text-transform: uppercase;
+    }
+    .auth-sig-sub { text-align: center; font-size: 8pt; color: #334155; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="document-border">
+    <table class="header-table">
+      <tr>
+        <td class="header-left">
+          <div class="inst-badge">Reporte Estadístico Institucional</div>
+          <div class="inst-name">${instName}</div>
+          <p class="inst-sub">
+            ${instAddress ? `Dirección: ${instAddress}` : 'Dirección y Equipo de Convivencia Escolar'}
+            ${instCode ? ` · Código/CUE: ${instCode}` : ''}
+            · Matrícula activa: <strong>${totalStudentsCount} estudiantes</strong>
+          </p>
+        </td>
+        <td class="header-right">
+          <div class="folio-box">
+            <div class="folio-label">Alcance del Informe</div>
+            <div class="folio-value">${shiftLabel}</div>
+            <div style="font-size:7pt;color:#64748B;margin-top:2px;">Emitido: ${emittedAt}</div>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="law-banner">
+      <div class="law-banner-title">Informe Ejecutivo de Estadísticas y Métricas de Convivencia Escolar</div>
+      <div class="law-banner-sub">Monitoreo Preventivo e Intervención Institucional — Ley Nacional N° 26.892</div>
+    </div>
+
+    <table class="kpi-table">
+      <tr>
+        <td class="kpi-box">
+          <div class="kpi-title">Reportes Totales</div>
+          <div class="kpi-num" style="color:#1E3A8A;">${kpis.totalReports}</div>
+          <div class="kpi-sub">${kpis.sentCount} sin abrir · ${kpis.attendedCount} gestionados</div>
+        </td>
+        <td class="kpi-box" style="border-top-color:#16A34A;">
+          <div class="kpi-title">Tasa de Atención</div>
+          <div class="kpi-num" style="color:#15803D;">${kpis.attentionRate}%</div>
+          <div class="kpi-sub">${kpis.inProgressCount} en seg. · ${kpis.finalizedCount} finalizados</div>
+        </td>
+        <td class="kpi-box" style="border-top-color:#D97706;">
+          <div class="kpi-title">Expedientes de Caso</div>
+          <div class="kpi-num" style="color:#B45309;">${kpis.totalCases}</div>
+          <div class="kpi-sub">${kpis.openCases} abiertos · ${kpis.trackingCases} en seg.</div>
+        </td>
+        <td class="kpi-box" style="border-top-color:#7C3AED;">
+          <div class="kpi-title">Casos Resueltos</div>
+          <div class="kpi-num" style="color:#6D28D9;">${kpis.resolvedCases} (${kpis.caseResolutionRate}%)</div>
+          <div class="kpi-sub">Con acta de acuerdo y cierre</div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="insight-box">
+      <div style="font-weight:800;text-transform:uppercase;font-size:8.5pt;margin-bottom:4px;">
+        Síntesis Diagnóstica Automática para Dirección
+      </div>
+      <div>• <strong>Tipología predominante:</strong> ${
+        topSituation
+          ? `${escapeHtml(topSituation.label)} (${topSituation.count} menciones, ${topSituation.percentage}% del total).`
+          : 'Sin reportes registrados.'
+      }</div>
+      <div>• <strong>Espacio físico/virtual crítico:</strong> ${
+        topLocation
+          ? `${escapeHtml(topLocation.label)} (${topLocation.percentage}% de ocurrencia).`
+          : 'Sin datos registrados.'
+      }</div>
+      <div>• <strong>Curso con mayor demanda:</strong> ${
+        topCourse
+          ? `${topCourse.course.year}.° "${escapeHtml(topCourse.course.division)}" (${escapeHtml(topCourse.course.shift)}) con ${topCourse.reportsCount} reporte(s).`
+          : 'Sin datos registrados.'
+      }</div>
+    </div>
+
+    <div class="section-header">I. Incidencia por Tipo de Situación Comunicada</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Modalidad / Tipología</th>
+          <th>Proporción Visual</th>
+          <th style="text-align:center;width:12%;">Menciones</th>
+          <th style="text-align:right;width:12%;">Porcentaje</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${situationRowsHtml}
+      </tbody>
+    </table>
+
+    <div class="section-header">II. Lugares de Mayor Ocurrencia</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Ámbito Escolar / Virtual</th>
+          <th>Proporción Visual</th>
+          <th style="text-align:center;width:12%;">Menciones</th>
+          <th style="text-align:right;width:12%;">Porcentaje</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${locationRowsHtml}
+      </tbody>
+    </table>
+
+    <div class="section-header">III. Frecuencia y Persistencia Temporal</div>
+    <table class="freq-table">
+      <tr>
+        <td style="background-color:#FEF2F2;">
+          <div style="font-size:13pt;font-weight:800;color:#DC2626;">${frequencyStats.highRecurrencePct}%</div>
+          <div style="font-size:7.5pt;font-weight:700;color:#991B1B;">ALTA RECURRENCIA</div>
+        </td>
+        <td>
+          <div style="font-size:12pt;font-weight:800;color:#DC2626;">${frequencyStats.daily}</div>
+          <div style="font-size:7.5pt;color:#475569;">Casi todos los días</div>
+        </td>
+        <td>
+          <div style="font-size:12pt;font-weight:800;color:#D97706;">${frequencyStats.frequent}</div>
+          <div style="font-size:7.5pt;color:#475569;">Frecuentemente</div>
+        </td>
+        <td>
+          <div style="font-size:12pt;font-weight:800;color:#2563EB;">${frequencyStats.several}</div>
+          <div style="font-size:7.5pt;color:#475569;">Varias veces</div>
+        </td>
+        <td>
+          <div style="font-size:12pt;font-weight:800;color:#16A34A;">${frequencyStats.once}</div>
+          <div style="font-size:7.5pt;color:#475569;">Una sola vez</div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="section-header">IV. Ranking de Incidencia por Curso y División</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:8%;text-align:center;">N°</th>
+          <th style="width:24%;">Curso y División</th>
+          <th style="width:24%;">Turno</th>
+          <th style="width:14%;text-align:center;">Ciclo</th>
+          <th style="width:15%;text-align:center;">Reportes</th>
+          <th style="width:15%;text-align:center;">En Seguimiento</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${courseRowsHtml}
+      </tbody>
+    </table>
+
+    <table class="authority-footer-table">
+      <tr>
+        <td>
+          <div class="auth-sig-space"></div>
+          <div class="auth-sig-line">Firma y Aclaración de la Autoridad Escolar</div>
+          <div class="auth-sig-sub"><strong>${authorityName}</strong> · ${authorityRole}</div>
+        </td>
+        <td>
+          <div class="auth-sig-space"></div>
+          <div class="auth-sig-line">Sello Oficial del Establecimiento Educativo</div>
+          <div class="auth-sig-sub">${instName}</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>`;
+}
+
+export async function shareStatisticsReportAsPdf(params: StatisticsPdfInput): Promise<void> {
+  const html = buildStatisticsReportHtml(params);
+  const shiftSuffix = params.shiftFilter === 'Todos' ? 'General' : params.shiftFilter;
+  const fileName = `Informe_Estadistico_Convivencia_${shiftSuffix}`;
+  await generateAndSharePdfHtml(
+    html,
+    fileName,
+    `Exportar Informe Estadístico de Convivencia (PDF)`
+  );
+}

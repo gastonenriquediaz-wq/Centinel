@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +19,7 @@ import { CasesService } from '../../../src/services/cases.service';
 import { CoursesService } from '../../../src/services/courses.service';
 import { StudentsService } from '../../../src/services/students.service';
 import { Report, Case, Course, ShiftType } from '../../../src/types/database.types';
+import { shareStatisticsReportAsPdf } from '../../../src/utils/pdfExport';
 
 const CANONICAL_SITUATIONS = [
   {
@@ -122,6 +124,7 @@ export default function AuthorityStatisticsScreen() {
   const [shiftFilter, setShiftFilter] = useState<'Todos' | ShiftType>('Todos');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const loadAllData = async () => {
     if (!profile?.institution_id) return;
@@ -388,6 +391,31 @@ export default function AuthorityStatisticsScreen() {
     };
   }, [filteredReports, situationStats, locationStats, courseStats]);
 
+  const handleExportPdf = async () => {
+    if (exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      await shareStatisticsReportAsPdf({
+        institution,
+        profile,
+        shiftFilter,
+        totalStudentsCount,
+        kpis,
+        situationStats,
+        locationStats,
+        frequencyStats,
+        courseStats,
+      });
+    } catch (err: any) {
+      Alert.alert(
+        'Error al generar PDF',
+        err.message || 'No se pudo generar o compartir el informe estadístico en PDF.'
+      );
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <Stack.Screen
@@ -427,6 +455,24 @@ export default function AuthorityStatisticsScreen() {
                 </Text>
               </View>
             </View>
+
+            <TouchableOpacity
+              style={[styles.exportTopBtn, exportingPdf && { opacity: 0.7 }]}
+              onPress={handleExportPdf}
+              disabled={exportingPdf}
+              activeOpacity={0.8}
+            >
+              {exportingPdf ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
+              )}
+              <Text style={styles.exportTopBtnText}>
+                {exportingPdf
+                  ? 'Generando PDF...'
+                  : 'Compartir / Descargar Informe Estadístico en PDF'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Filtro por Turno */}
@@ -766,6 +812,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#BFDBFE',
     marginBottom: 14,
+    gap: 12,
+  },
+  exportTopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E3A8A',
+    borderRadius: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    gap: 8,
+  },
+  exportTopBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   headerBannerRow: {
     flexDirection: 'row',

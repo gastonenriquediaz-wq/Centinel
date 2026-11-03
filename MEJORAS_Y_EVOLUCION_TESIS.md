@@ -82,6 +82,7 @@ Este documento conserva la trazabilidad de todas las **funcionalidades agregadas
   * **Ranking de Lugares de Mayor Ocurrencia:** (*Patio/recreo*, *Aula*, *Redes sociales*, *Baños*, *Entrada/salida*, *Cerca del colegio*).
   * **Indicador de Frecuencia y Persistencia Temporal:** Destaca el porcentaje de **alta recurrencia** (hechos que ocurren frecuentemente o casi todos los días) frente a hechos aislados.
   * **Ranking de Incidencia por Curso y División:** Lista ordenada de cursos según volumen de reportes con acceso directo a la nómina del curso.
+  * **Exportación del Informe Estadístico en PDF Oficial A4 (`shareStatisticsReportAsPdf` en `src/utils/pdfExport.ts`):** Botón *"Compartir / Descargar Informe Estadístico en PDF"* que genera un documento `.pdf` ejecutivo con membrete institucional, KPIs, síntesis diagnóstica, tablas comparativas y espacio para firma directiva y sello escolar.
 
 ### Punto 2 — Vista de Acta Imprimible / Exportable (Protocolo físico con firmas) — [IMPLEMENTADO]
 * **Objetivo:** Articular el registro digital de las actuaciones escolares con el requisito legal/administrativo de contar con constancias físicas firmadas de puño y letra por padres, tutores, estudiantes y directivos (Ley Nacional N° 26.892).
