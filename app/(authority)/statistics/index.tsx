@@ -176,11 +176,15 @@ export default function AuthorityStatisticsScreen() {
     });
   }, [reports, shiftFilter, courseMap]);
 
-  // Casos filtrados por turno seleccionado (según el reporte vinculado)
+  // Casos filtrados por turno seleccionado (según el reporte vinculado principal o secundarios)
   const filteredCases = useMemo(() => {
     if (shiftFilter === 'Todos') return cases;
     const validReportIds = new Set(filteredReports.map((r) => r.id));
-    return cases.filter((c) => validReportIds.has(c.report_id));
+    return cases.filter(
+      (c) =>
+        validReportIds.has(c.report_id) ||
+        c.linked_reports?.some((lr) => validReportIds.has(lr.id))
+    );
   }, [cases, filteredReports, shiftFilter]);
 
   // 1. Indicadores Generales (KPIs)
@@ -362,8 +366,12 @@ export default function AuthorityStatisticsScreen() {
       const courseReports = filteredReports.filter(
         (r) => r.course_id === course.id || r.course?.id === course.id
       );
-      const activeCasesForCourse = courseReports.filter(
-        (r) => r.status === 'in_progress'
+      const courseReportIds = new Set(courseReports.map((r) => r.id));
+      const activeCasesForCourse = filteredCases.filter(
+        (c) =>
+          c.status !== 'resolved' &&
+          (courseReportIds.has(c.report_id) ||
+            c.linked_reports?.some((lr) => courseReportIds.has(lr.id)))
       ).length;
 
       return {
@@ -374,7 +382,7 @@ export default function AuthorityStatisticsScreen() {
     });
 
     return list.sort((a, b) => b.reportsCount - a.reportsCount);
-  }, [courses, filteredReports, shiftFilter]);
+  }, [courses, filteredReports, filteredCases, shiftFilter]);
 
   // 6. Diagnóstico Pedagógico Automático
   const diagnosticInsight = useMemo(() => {

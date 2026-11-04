@@ -39,7 +39,10 @@ export default function CourseStudentsScreen() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const loadData = useCallback(async () => {
-    if (!courseId) return;
+    if (!courseId) {
+      setLoading(false);
+      return;
+    }
     try {
       const [courseData, studentsData] = await Promise.all([
         CoursesService.getCourseById(courseId),

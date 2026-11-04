@@ -23,6 +23,8 @@ export default function AuthorityCaseHistoryScreen() {
   useEffect(() => {
     if (id) {
       loadData();
+    } else {
+      setLoading(false);
     }
   }, [id]);
 
@@ -189,7 +191,11 @@ export default function AuthorityCaseHistoryScreen() {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorText}>No se pudo cargar el caso.</Text>
-        <Button title="Volver" onPress={() => router.back()} style={styles.backBtn} />
+        <Button
+          title="Volver"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(authority)/cases'))}
+          style={styles.backBtn}
+        />
       </View>
     );
   }

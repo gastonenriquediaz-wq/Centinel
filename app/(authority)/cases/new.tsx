@@ -30,6 +30,8 @@ export default function NewCaseScreen() {
   useEffect(() => {
     if (reportId) {
       loadReport();
+    } else {
+      setLoading(false);
     }
   }, [reportId]);
 

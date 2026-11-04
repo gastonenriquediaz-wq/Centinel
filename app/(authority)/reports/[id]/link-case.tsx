@@ -33,7 +33,10 @@ export default function LinkReportToCaseScreen() {
   const [linkingCaseId, setLinkingCaseId] = useState<string | null>(null);
 
   const loadData = async () => {
-    if (!id || !profile?.institution_id) return;
+    if (!id || !profile?.institution_id) {
+      setLoading(false);
+      return;
+    }
     try {
       const [reportRes, casesRes] = await Promise.all([
         ReportsService.getReportDetails(id as string),

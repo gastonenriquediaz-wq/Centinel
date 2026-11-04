@@ -93,7 +93,7 @@ export default function EducationTopicDetailScreen() {
       <Button
         title="Volver al Listado de Temas"
         variant="outline"
-        onPress={() => router.back()}
+        onPress={() => (router.canGoBack() ? router.back() : router.replace('/(student)/education'))}
         style={styles.bottomBackButton}
       />
     </ScrollView>
