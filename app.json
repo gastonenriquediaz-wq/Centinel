@@ -28,7 +28,8 @@
       "expo-router",
       "expo-status-bar",
       "expo-secure-store",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-font"
     ]
   }
 }

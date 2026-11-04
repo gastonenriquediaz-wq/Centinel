@@ -107,15 +107,16 @@ export default function AuthorityReportsList() {
   const formatReportDate = (dateStr: string): string => {
     try {
       const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr || 'Fecha no disponible';
       const day = d.getDate().toString().padStart(2, '0');
-      const months = ['oct', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-      const month = months[d.getMonth()] || 'oct';
+      const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const month = months[d.getMonth()] || 'ene';
       const year = d.getFullYear();
       const hours = d.getHours().toString().padStart(2, '0');
       const minutes = d.getMinutes().toString().padStart(2, '0');
       return `${day} ${month} ${year} · ${hours}:${minutes}`;
     } catch {
-      return dateStr;
+      return dateStr || 'Fecha no disponible';
     }
   };
 

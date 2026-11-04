@@ -60,16 +60,29 @@ export default function PendingRequestsScreen() {
     }
   };
 
-  const handleReject = async (student: StudentWithCourse) => {
-    try {
-      setProcessingId(student.id);
-      await StudentsService.updateAccountStatus(student.id, 'rejected');
-      setRequests((prev) => prev.filter((r) => r.id !== student.id));
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo rechazar la solicitud.');
-    } finally {
-      setProcessingId(null);
-    }
+  const handleReject = (student: StudentWithCourse) => {
+    Alert.alert(
+      'Rechazar solicitud',
+      `¿Confirmás que deseás rechazar la solicitud de ${student.first_name} ${student.last_name}? El estudiante no podrá acceder a la plataforma.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Rechazar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setProcessingId(student.id);
+              await StudentsService.updateAccountStatus(student.id, 'rejected');
+              setRequests((prev) => prev.filter((r) => r.id !== student.id));
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'No se pudo rechazar la solicitud.');
+            } finally {
+              setProcessingId(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (

@@ -86,6 +86,7 @@ export default function AuthorityReportDetailScreen() {
   const formatSentDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr || 'Fecha no disponible';
       const day = d.getDate();
       const months = [
         'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -99,7 +100,7 @@ export default function AuthorityReportDetailScreen() {
       hours = hours % 12 || 12;
       return `Enviado el ${day} de ${month} de ${year} · ${hours}:${minutes} ${ampm}`;
     } catch {
-      return dateStr;
+      return dateStr || 'Fecha no disponible';
     }
   };
 
@@ -107,6 +108,7 @@ export default function AuthorityReportDetailScreen() {
   const formatOccurredDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr || 'Fecha no disponible';
       const day = d.getDate();
       const months = [
         'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -120,7 +122,7 @@ export default function AuthorityReportDetailScreen() {
       hours = hours % 12 || 12;
       return `${day} de ${month} de ${year}, ${hours}:${minutes} ${ampm}`;
     } catch {
-      return dateStr;
+      return dateStr || 'Fecha no disponible';
     }
   };
 

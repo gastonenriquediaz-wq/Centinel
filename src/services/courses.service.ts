@@ -222,8 +222,9 @@ export const CoursesService = {
         institution_id: params.institutionId,
         created_by: params.userId,
         code_token: tokenUUID,
+        short_code: code,
         expires_at: expiresAt,
-      })
+      } as any)
       .select('*')
       .single();
 
@@ -250,16 +251,29 @@ export const CoursesService = {
       }
     }
 
-    const { data, error } = await supabase.rpc('validate_qr_token', {
-      p_token: tokenToValidate,
+    // Intentar primero con la RPC validate_registration_code
+    let { data, error } = await supabase.rpc('validate_registration_code', {
+      p_code: cleanAlpha.length === 10 ? cleanAlpha : trimmed,
     });
+
+    if (error) {
+      // Fallback a validate_qr_token
+      const fallback = await supabase.rpc('validate_qr_token', {
+        p_token: tokenToValidate,
+      });
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) {
       return { valid: false, error: 'No se pudo conectar con el servidor para validar el código.' };
     }
 
-    const res = data as QRValidationResult;
-    return { ...res, token_for_registration: tokenToValidate };
+    const res = data as QRValidationResult & { token_for_registration?: string; code_token?: string };
+    return {
+      ...res,
+      token_for_registration: res.token_for_registration || res.code_token || tokenToValidate,
+    };
   },
 
   /**

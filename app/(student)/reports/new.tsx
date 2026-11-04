@@ -374,7 +374,7 @@ export default function NewReportScreen() {
           student_id: profile.id,
           situation_type: finalSituations,
           location: finalLocations,
-          occurred_at: new Date(occurredAtDate).toISOString(),
+          occurred_at: new Date().toISOString(),
           frequency: frequency,
           involved_persons: finalInvolvedPersons,
           description: description,

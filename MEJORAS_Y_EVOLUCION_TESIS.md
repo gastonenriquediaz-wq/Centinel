@@ -109,3 +109,23 @@ Este documento conserva la trazabilidad de todas las **funcionalidades agregadas
   * **Barra horizontal de chips de Cursos (`Filtrar por curso:`):** Lista todos los cursos de la institución (ej. `Todos los cursos`, `1.° "A" (Mañana)`, `3.° "B" (Tarde)`) ordenados por año y división.
   * **Contadores dinámicos por curso:** Cada chip de curso muestra una insignia con la cantidad de reportes correspondientes (combinable en tiempo real con el filtro de estado y el buscador de texto).
   * **Soporte de parámetro de ruta (`?courseId=...`):** Permite abrir la bandeja pre-filtrada en un curso específico y cuenta con botón rápido de **"Limpiar filtros"**.
+
+---
+
+## 5. Auditoría de Seguridad, Registro Unificado y Robustez Institucional
+
+### 5.1. Validación Unificada de Códigos de Registro (`validate_registration_code`)
+* **Mejora:** Se implementó una función RPC en PostgreSQL (`validate_registration_code`) y soporte de columna `short_code` en `qr_codes` que valida de manera transparente tanto códigos QR (UUID) como códigos alfanuméricos cortos de 10 caracteres ingresados manualmente por estudiantes no autenticados (`anon`), garantizando resolución atómica y asociación correcta al curso e institución.
+
+### 5.2. Blindaje de Perfiles contra Escalación de Privilegios (Trigger PostgreSQL)
+* **Seguridad:** Mediante un trigger `BEFORE UPDATE` en la tabla `public.profiles` (`trg_protect_profile_privileges`), se bloquea a nivel de base de datos cualquier intento de modificar campos críticos (`role`, `account_status`, `institution_id`) por parte de usuarios comunes, reservando el cambio de roles o aprobación de cuentas exclusivamente a autoridades aprobadas de la institución.
+
+### 5.3. Protección de Acceso a Expedientes Vinculados (RLS de Casos)
+* **Mejora RLS:** Se actualizó la política de lectura en `public.cases` para que tanto el emisor del reporte original como los estudiantes cuyos reportes fueron vinculados con posterioridad a un expediente existente puedan visualizar la resolución institucional y el acompañamiento correspondiente.
+
+### 5.4. Sincronización y Actualización Reactiva de Pantallas (`useFocusEffect`)
+* **Mejora UX:** Se incorporó `useFocusEffect` en las pantallas de expedientes y reportes (`app/(authority)/cases/[id]/index.tsx`, `app/(authority)/cases/index.tsx`, `app/(student)/reports/index.tsx`, `app/(student)/reports/[id]/index.tsx`), de modo que al regresar de labrar un acta, chatear o cerrar un caso, las pantallas actualizan de inmediato su estado sin requerir recarga manual.
+
+### 5.5. Integridad en Actas y Fechas Oficiales
+* **Mejora:** En la creación de actuaciones (`app/(authority)/cases/[id]/acts/new.tsx`), se procesa de forma fidedigna la fecha ingresada (`actDate`) y hora exacta, evitando desvíos al mediodía o pérdida de la fecha seleccionada. Asimismo, se unificó la fecha comunicada del incidente (`occurred_at`) en hora local y se corrigió la nomenclatura de fechas en la bandeja de reportes.
+

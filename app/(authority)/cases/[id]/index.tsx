@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   TextInput,
   Share,
 } from 'react-native';
-import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useLocalSearchParams, router, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
@@ -42,13 +42,8 @@ export default function AuthorityCaseDetailScreen() {
   // Modal para ver detalle de estudiante
   const [selectedStudent, setSelectedStudent] = useState<CaseInvolvedStudent | null>(null);
 
-  useEffect(() => {
-    if (id) {
-      loadCaseData();
-    }
-  }, [id]);
-
-  const loadCaseData = async () => {
+  const loadCaseData = useCallback(async () => {
+    if (!id) return;
     try {
       const { data, error } = await CasesService.getCaseDetails(id as string);
       if (!error && data) {
@@ -57,7 +52,13 @@ export default function AuthorityCaseDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCaseData();
+    }, [loadCaseData])
+  );
 
   const getStatusBadge = (status: CaseStatus) => {
     switch (status) {
@@ -231,8 +232,12 @@ export default function AuthorityCaseDetailScreen() {
   const involvedStudents = caseItem.involved_students || [];
   const actsList = caseItem.acts || [];
 
+  const [exportingPdf, setExportingPdf] = useState(false);
+
   const handleExportCaseDossier = async () => {
+    if (exportingPdf) return;
     try {
+      setExportingPdf(true);
       await shareCaseDossierAsPdf({
         caseItem,
         institution,
@@ -244,6 +249,8 @@ export default function AuthorityCaseDetailScreen() {
         'Error al generar PDF',
         err.message || 'No se pudo generar el documento PDF del expediente.'
       );
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -381,13 +388,15 @@ export default function AuthorityCaseDetailScreen() {
           </TouchableOpacity>
         ))}
 
-        <TouchableOpacity
-          style={styles.addActionButton}
-          onPress={() => setAddStudentModalVisible(true)}
-        >
-          <Ionicons name="add" size={18} color="#1E3A8A" />
-          <Text style={styles.addActionText}>Agregar estudiante</Text>
-        </TouchableOpacity>
+        {caseItem.status !== 'resolved' && (
+          <TouchableOpacity
+            style={styles.addActionButton}
+            onPress={() => setAddStudentModalVisible(true)}
+          >
+            <Ionicons name="add" size={18} color="#1E3A8A" />
+            <Text style={styles.addActionText}>Agregar estudiante</Text>
+          </TouchableOpacity>
+        )}
       </Card>
 
       {/* 4. Actuaciones y seguimiento */}
@@ -436,13 +445,15 @@ export default function AuthorityCaseDetailScreen() {
           ))
         )}
 
-        <TouchableOpacity
-          style={styles.addActionButton}
-          onPress={() => router.push(`/(authority)/cases/${caseItem.id}/acts/new` as any)}
-        >
-          <Ionicons name="add" size={18} color="#1E3A8A" />
-          <Text style={styles.addActionText}>Registrar nueva actuación</Text>
-        </TouchableOpacity>
+        {caseItem.status !== 'resolved' && (
+          <TouchableOpacity
+            style={styles.addActionButton}
+            onPress={() => router.push(`/(authority)/cases/${caseItem.id}/acts/new` as any)}
+          >
+            <Ionicons name="add" size={18} color="#1E3A8A" />
+            <Text style={styles.addActionText}>Registrar nueva actuación</Text>
+          </TouchableOpacity>
+        )}
       </Card>
 
       {/* 5. Historial de operaciones */}
@@ -465,15 +476,22 @@ export default function AuthorityCaseDetailScreen() {
 
       {/* 6. Exportar / Imprimir Resumen del Expediente */}
       <TouchableOpacity
-        style={styles.historyCard}
+        style={[styles.historyCard, exportingPdf && { opacity: 0.6 }]}
         onPress={handleExportCaseDossier}
+        disabled={exportingPdf}
         activeOpacity={0.7}
       >
         <View style={[styles.historyIconWrap, { backgroundColor: '#DCFCE7' }]}>
-          <Ionicons name="print-outline" size={22} color="#15803D" />
+          {exportingPdf ? (
+            <ActivityIndicator size="small" color="#15803D" />
+          ) : (
+            <Ionicons name="print-outline" size={22} color="#15803D" />
+          )}
         </View>
         <View style={styles.historyContent}>
-          <Text style={styles.historyTitle}>Exportar / Imprimir expediente completo</Text>
+          <Text style={styles.historyTitle}>
+            {exportingPdf ? 'Generando documento PDF...' : 'Exportar / Imprimir expediente completo'}
+          </Text>
           <Text style={styles.historySubtitle}>
             Generá el documento formal consolidado con todas las actuaciones y espacio para firmas.
           </Text>

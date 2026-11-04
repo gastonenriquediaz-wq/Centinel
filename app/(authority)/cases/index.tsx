@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   RefreshControl,
   TextInput,
 } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
@@ -21,6 +21,7 @@ type CaseFilterType = 'all' | 'open' | 'under_investigation' | 'resolved' | 'act
 
 const FILTER_TABS: { label: string; value: CaseFilterType }[] = [
   { label: 'Todos', value: 'all' },
+  { label: 'Activos', value: 'active' },
   { label: 'Abierto', value: 'open' },
   { label: 'En seguimiento', value: 'under_investigation' },
   { label: 'Finalizado', value: 'resolved' },
@@ -34,22 +35,18 @@ export default function AuthorityCasesList() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<CaseFilterType>(
-    filter === 'active'
-      ? 'open'
-      : filter && ['all', 'open', 'under_investigation', 'resolved'].includes(filter)
+    filter && ['all', 'active', 'open', 'under_investigation', 'resolved'].includes(filter)
       ? (filter as CaseFilterType)
       : 'all'
   );
 
   useEffect(() => {
-    if (filter === 'active') {
-      setSelectedFilter('open');
-    } else if (filter && ['all', 'open', 'under_investigation', 'resolved'].includes(filter)) {
+    if (filter && ['all', 'active', 'open', 'under_investigation', 'resolved'].includes(filter)) {
       setSelectedFilter(filter as CaseFilterType);
     }
   }, [filter]);
 
-  const loadCases = async () => {
+  const loadCases = useCallback(async () => {
     if (!profile?.institution_id) return;
     try {
       const statusParam =
@@ -72,12 +69,13 @@ export default function AuthorityCasesList() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    setLoading(true);
-    loadCases();
   }, [profile?.institution_id, selectedFilter]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCases();
+    }, [loadCases])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);

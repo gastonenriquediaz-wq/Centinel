@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Linking,
   Modal,
 } from 'react-native';
-import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useLocalSearchParams, router, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../../../src/components/ui/Card';
@@ -41,13 +41,8 @@ export default function StudentReportDetailScreen() {
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (id) {
-      loadReport();
-    }
-  }, [id, profile?.id]);
-
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
+    if (!id) return;
     try {
       const { data, error } = await ReportsService.getReportDetails(id as string);
       if (!error && data) {
@@ -106,7 +101,13 @@ export default function StudentReportDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, profile?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadReport();
+    }, [loadReport])
+  );
 
   const getStatusBadge = (status: ReportStatus) => {
     switch (status) {
@@ -168,7 +169,8 @@ export default function StudentReportDetailScreen() {
       return { afectado, agresores, testigos };
     }
 
-    const parts = rawText.split(/[|\n;]/).map((p) => p.trim());
+    // Dividir únicamente por | o saltos de línea para preservar elementos separados por comas o punto y coma
+    const parts = rawText.split(/[|\n]/).map((p) => p.trim()).filter(Boolean);
     for (const part of parts) {
       const lower = part.toLowerCase();
       if (lower.startsWith('afectado:') || lower.startsWith('afectados:')) {
@@ -181,8 +183,8 @@ export default function StudentReportDetailScreen() {
       } else if (lower.startsWith('agresores:') || lower.startsWith('participantes:')) {
         const val = part.replace(/^(agresores|participantes):/i, '').trim();
         if (val) agresores = val;
-      } else if (lower.startsWith('testigos:')) {
-        const val = part.replace(/^testigos:/i, '').trim();
+      } else if (lower.startsWith('testigos:') || lower.startsWith('personas que presenciaron:')) {
+        const val = part.replace(/^(testigos|personas que presenciaron):/i, '').trim();
         if (val) testigos = val;
       }
     }

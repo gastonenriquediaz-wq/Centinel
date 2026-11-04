@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   RefreshControl,
   ScrollView,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../../src/components/ui/Card';
@@ -41,48 +41,49 @@ export default function StudentReportsList() {
   const [unreadTotalCount, setUnreadTotalCount] = useState(0);
   const [latestUnreadReportId, setLatestUnreadReportId] = useState<string | null>(null);
 
-  const loadUnreadMessages = async () => {
-    if (!profile?.id) return;
-    try {
-      const { data, error } = await supabase
-        .from('report_messages')
-        .select('id, report_id, created_at')
-        .neq('sender_id', profile.id)
-        .is('read_at', null)
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        const ids = new Set<string>(data.map((m) => m.report_id));
-        setUnreadReportIds(ids);
-        setUnreadTotalCount(data.length);
-        if (data.length > 0) {
-          setLatestUnreadReportId(data[0].report_id);
-        } else {
-          setLatestUnreadReportId(null);
-        }
-      }
-    } catch (e) {
-      console.log('Error cargando mensajes no leídos:', e);
-    }
-  };
-
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     if (!profile?.id) return;
     try {
       const { data, error } = await ReportsService.getStudentReports(profile.id);
       if (!error && data) {
         setReports(data);
+        const studentReportIds = data.map((r) => r.id);
+        if (studentReportIds.length > 0) {
+          const { data: msgData } = await supabase
+            .from('report_messages')
+            .select('id, report_id, created_at')
+            .in('report_id', studentReportIds)
+            .neq('sender_id', profile.id)
+            .is('read_at', null)
+            .order('created_at', { ascending: false });
+
+          if (msgData) {
+            const ids = new Set<string>(msgData.map((m) => m.report_id));
+            setUnreadReportIds(ids);
+            setUnreadTotalCount(msgData.length);
+            if (msgData.length > 0) {
+              setLatestUnreadReportId(msgData[0].report_id);
+            } else {
+              setLatestUnreadReportId(null);
+            }
+          }
+        } else {
+          setUnreadReportIds(new Set());
+          setUnreadTotalCount(0);
+          setLatestUnreadReportId(null);
+        }
       }
-      await loadUnreadMessages();
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    loadReports();
   }, [profile?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadReports();
+    }, [loadReports])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);

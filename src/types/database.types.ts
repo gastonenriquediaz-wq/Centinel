@@ -45,6 +45,7 @@ export interface QRCode {
   institution_id: string;
   created_by: string;
   code_token: string;
+  short_code?: string;
   expires_at: string;
   created_at: string;
 }

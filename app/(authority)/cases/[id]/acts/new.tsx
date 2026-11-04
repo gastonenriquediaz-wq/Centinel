@@ -298,18 +298,83 @@ export default function NewCaseActScreen() {
       fullContent += `\n\n🗓️ Próximas acciones:\n${nextActions.trim()}`;
     }
 
-    // Calcular fecha y hora aproximada
-    let occurredIso = new Date().toISOString();
-    try {
-      const parts = actTime.split(':');
-      if (parts.length === 2) {
-        const d = new Date();
-        d.setHours(parseInt(parts[0], 10) || 12, parseInt(parts[1], 10) || 0, 0, 0);
-        occurredIso = d.toISOString();
+    // Calcular fecha y hora exacta ingresada por la autoridad
+    const parseDateAndTimeToIso = (dateStr: string, timeStr: string): string => {
+      try {
+        let year = new Date().getFullYear();
+        let month = new Date().getMonth();
+        let day = new Date().getDate();
+
+        const trimmedDate = dateStr.trim();
+        const monthsMap: Record<string, number> = {
+          ene: 0, enero: 0,
+          feb: 1, febrero: 1,
+          mar: 2, marzo: 2,
+          abr: 3, abril: 3,
+          may: 4, mayo: 4,
+          jun: 5, junio: 5,
+          jul: 6, julio: 6,
+          ago: 7, agosto: 7,
+          sep: 8, septiembre: 8,
+          oct: 9, octubre: 9,
+          nov: 10, noviembre: 10,
+          dic: 11, diciembre: 11,
+        };
+
+        const textParts = trimmedDate.split(/[\s-]+/);
+        if (textParts.length === 3 && isNaN(Number(textParts[1]))) {
+          const parsedDay = parseInt(textParts[0], 10);
+          const monthKey = textParts[1].toLowerCase();
+          const parsedYear = parseInt(textParts[2], 10);
+          if (!isNaN(parsedDay) && monthsMap[monthKey] !== undefined && !isNaN(parsedYear)) {
+            day = parsedDay;
+            month = monthsMap[monthKey];
+            year = parsedYear;
+          }
+        } else if (trimmedDate.includes('/')) {
+          const slashParts = trimmedDate.split('/');
+          if (slashParts.length === 3) {
+            const d = parseInt(slashParts[0], 10);
+            const m = parseInt(slashParts[1], 10) - 1;
+            const y = parseInt(slashParts[2], 10);
+            if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+              day = d;
+              month = m;
+              year = y;
+            }
+          }
+        } else if (trimmedDate.includes('-')) {
+          const dashParts = trimmedDate.split('-');
+          if (dashParts.length === 3) {
+            const y = parseInt(dashParts[0], 10);
+            const m = parseInt(dashParts[1], 10) - 1;
+            const d = parseInt(dashParts[2], 10);
+            if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+              day = d;
+              month = m;
+              year = y;
+            }
+          }
+        }
+
+        let hours = 12;
+        let minutes = 0;
+        const timeParts = timeStr.trim().split(':');
+        if (timeParts.length >= 2) {
+          const h = parseInt(timeParts[0], 10);
+          const min = parseInt(timeParts[1], 10);
+          if (!isNaN(h) && h >= 0 && h <= 23) hours = h;
+          if (!isNaN(min) && min >= 0 && min <= 59) minutes = min;
+        }
+
+        const resDate = new Date(year, month, day, hours, minutes, 0, 0);
+        return isNaN(resDate.getTime()) ? new Date().toISOString() : resDate.toISOString();
+      } catch {
+        return new Date().toISOString();
       }
-    } catch {
-      occurredIso = new Date().toISOString();
-    }
+    };
+
+    const occurredIso = parseDateAndTimeToIso(actDate, actTime);
 
     const selectedOption = ACT_OPTIONS.find((o) => o.key === selectedOptionKey) || ACT_OPTIONS[0];
 

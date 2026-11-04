@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  Share,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -97,9 +98,15 @@ export default function CourseCodeScreen() {
     try {
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(code);
+        setCopied(true);
+        Alert.alert('Código copiado', `El código "${code}" ha sido copiado.`);
+      } else {
+        await Share.share({
+          message: `Código de registro Centinel para ${course ? `${course.year}° "${course.division}"` : 'el curso'}: ${code}`,
+          title: 'Código de Registro Centinel',
+        });
+        setCopied(true);
       }
-      setCopied(true);
-      Alert.alert('Código copiado', `El código "${code}" ha sido copiado.`);
       setTimeout(() => setCopied(false), 3000);
     } catch {
       Alert.alert('Código de registro', `Código: ${code}`);

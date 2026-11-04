@@ -120,11 +120,12 @@ export const StudentsService = {
       .single();
 
     if (student) {
+      const fullName = `${student.first_name} ${student.last_name}`.trim();
       const { data: caseAudit } = await supabase
         .from('audit_log')
         .select('id, details')
         .eq('entity_type', 'case')
-        .ilike('details->>name', `%${student.last_name}%`)
+        .or(`details->>student_name.ilike.%${fullName}%,details->>name.ilike.%${fullName}%`)
         .limit(1);
 
       if (caseAudit && caseAudit.length > 0) {
