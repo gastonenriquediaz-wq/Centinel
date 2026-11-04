@@ -40,15 +40,20 @@ export default function NewCourseScreen() {
       return;
     }
 
+    if (division.trim().length > 15) {
+      setErrorMessage('La división no puede superar los 15 caracteres.');
+      return;
+    }
+
     const parsedSchoolYear = parseInt(schoolYear, 10);
-    if (isNaN(parsedSchoolYear) || parsedSchoolYear < 2024) {
-      setErrorMessage('Ingresá un ciclo lectivo válido.');
+    if (isNaN(parsedSchoolYear) || parsedSchoolYear < 2020 || parsedSchoolYear > 2100) {
+      setErrorMessage('Ingresá un ciclo lectivo válido (entre 2020 y 2100).');
       return;
     }
 
     const parsedCap = parseInt(estimatedStudents, 10);
-    if (isNaN(parsedCap) || parsedCap <= 0) {
-      setErrorMessage('La cantidad estimada de estudiantes debe ser mayor a 0.');
+    if (isNaN(parsedCap) || parsedCap <= 0 || parsedCap > 200) {
+      setErrorMessage('La cantidad estimada de estudiantes debe ser un número entre 1 y 200.');
       return;
     }
 

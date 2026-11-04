@@ -97,9 +97,11 @@ export default function AuthorityCaseActDetailScreen() {
   // Parsear participantes para armar casilleros de firma
   const parsedParticipants = useMemo(() => {
     if (!act?.participants) return [];
-    const sep = act.participants.includes(';') ? ';' : ',';
-    return act.participants
-      .split(sep)
+    const items = act.participants.includes(';')
+      ? act.participants.split(';')
+      : [act.participants];
+
+    return items
       .map((pStr) => {
         const trimmed = pStr.trim();
         if (!trimmed) return null;

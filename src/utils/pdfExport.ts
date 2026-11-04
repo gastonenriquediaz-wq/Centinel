@@ -52,9 +52,12 @@ export interface ParsedParticipant {
 
 export function parseActParticipants(participantsRaw?: string | null): ParsedParticipant[] {
   if (!participantsRaw) return [];
-  const sep = participantsRaw.includes(';') ? ';' : ',';
-  return participantsRaw
-    .split(sep)
+  // Dividir por ';' para respetar comas legítimas dentro de los cargos o nombres
+  const items = participantsRaw.includes(';')
+    ? participantsRaw.split(';')
+    : [participantsRaw];
+
+  return items
     .map((pStr) => {
       const trimmed = pStr.trim();
       if (!trimmed) return null;

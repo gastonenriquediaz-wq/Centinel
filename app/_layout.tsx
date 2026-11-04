@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Alert, Platform } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/auth.store';
@@ -32,7 +32,35 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 }
 
 export default function RootLayout() {
-  const { setSession, setProfile, setLoading, reset, profile } = useAuthStore();
+  const segments = useSegments();
+  const { setSession, setProfile, setLoading, reset, profile, session, isLoading } = useAuthStore();
+
+  // Guarda global de navegación reactiva por roles y estado de cuenta
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+    const inStudentGroup = segments[0] === '(student)';
+    const inAuthorityGroup = segments[0] === '(authority)';
+
+    if (!session || !profile || profile.account_status !== 'approved') {
+      if (inStudentGroup || inAuthorityGroup) {
+        router.replace('/(auth)/login');
+      }
+    } else {
+      if (inAuthGroup) {
+        if (profile.role === 'student') {
+          router.replace('/(student)');
+        } else if (profile.role === 'authority') {
+          router.replace('/(authority)');
+        }
+      } else if (inStudentGroup && profile.role !== 'student') {
+        router.replace('/(authority)');
+      } else if (inAuthorityGroup && profile.role !== 'authority') {
+        router.replace('/(student)');
+      }
+    }
+  }, [session, profile, segments, isLoading]);
 
   useEffect(() => {
     // 1. Verificar sesión persistida
