@@ -28,6 +28,7 @@ export function formatFormalDateTime(dateStr?: string | null): string {
   if (!dateStr) return 'Sin fecha registrada';
   try {
     const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr || 'Sin fecha válida';
     const day = d.getDate();
     const months = [
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',

@@ -50,6 +50,7 @@ export default function NewCaseScreen() {
     if (!dateStr) return '';
     try {
       const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr || '';
       const day = d.getDate();
       const months = [
         'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
