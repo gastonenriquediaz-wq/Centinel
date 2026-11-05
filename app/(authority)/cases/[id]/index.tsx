@@ -26,6 +26,7 @@ export default function AuthorityCaseDetailScreen() {
   const [caseItem, setCaseItem] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
   const [resolving, setResolving] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   // Modal para resolución de caso
   const [resolveModalVisible, setResolveModalVisible] = useState(false);
@@ -231,8 +232,6 @@ export default function AuthorityCaseDetailScreen() {
 
   const involvedStudents = caseItem.involved_students || [];
   const actsList = caseItem.acts || [];
-
-  const [exportingPdf, setExportingPdf] = useState(false);
 
   const handleExportCaseDossier = async () => {
     if (exportingPdf) return;
