@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
   TouchableOpacity,
   Alert,
   Image,
@@ -159,6 +161,7 @@ export default function NewReportScreen() {
 
   // Selector de multimedia (Paso 3)
   const pickMedia = async (mediaType: 'image' | 'video') => {
+    const { setNativeDialogOpen } = useAuthStore.getState();
     try {
       const currentImages = attachments.filter((a) => a.type === 'image');
       const currentVideos = attachments.filter((a) => a.type === 'video');
@@ -172,6 +175,7 @@ export default function NewReportScreen() {
         return;
       }
 
+      setNativeDialogOpen(true);
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
         Alert.alert('Permiso denegado', 'Se necesita acceso a la galería para adjuntar archivos.');
@@ -212,6 +216,8 @@ export default function NewReportScreen() {
       }
     } catch (err: any) {
       Alert.alert('Error', 'No se pudo seleccionar el archivo: ' + err.message);
+    } finally {
+      setNativeDialogOpen(false);
     }
   };
 
@@ -403,16 +409,21 @@ export default function NewReportScreen() {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.container,
-        {
-          paddingTop: Math.max(insets.top, 24) + 12,
-          paddingBottom: Math.max(insets.bottom, 24) + 40,
-        },
-      ]}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: Math.max(insets.top, 24) + 12,
+            paddingBottom: Math.max(insets.bottom, 24) + 40,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
       {/* Ocultar encabezado de navegación nativo que mostraba "(Student)/reports/new" */}
       <Stack.Screen options={{ headerShown: false }} />
 
@@ -943,7 +954,8 @@ export default function NewReportScreen() {
           )}
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

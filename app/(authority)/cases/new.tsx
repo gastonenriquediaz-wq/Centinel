@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
   Alert,
   TouchableOpacity,
   ActivityIndicator,
@@ -147,10 +149,45 @@ export default function NewCaseScreen() {
     );
   }
 
+  if (!report) {
+    return (
+      <View style={[styles.centerContainer, { padding: 24 }]}>
+        <Stack.Screen
+          options={{
+            title: 'Crear caso',
+            headerStyle: { backgroundColor: '#1E3A8A' },
+            headerTintColor: '#FFFFFF',
+            headerTitleStyle: { fontWeight: '700' },
+          }}
+        />
+        <Card style={{ padding: 24, alignItems: 'center', width: '100%' }}>
+          <Ionicons name="alert-circle-outline" size={44} color="#DC2626" style={{ marginBottom: 12 }} />
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 6, textAlign: 'center' }}>
+            Reporte de origen no encontrado
+          </Text>
+          <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 18 }}>
+            No fue posible cargar el reporte seleccionado para iniciar el expediente institucional.
+          </Text>
+          <TouchableOpacity
+            style={[styles.submitButton, { width: '100%', marginBottom: 0 }]}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.submitButtonText}>Volver</Text>
+          </TouchableOpacity>
+        </Card>
+      </View>
+    );
+  }
+
   const badge = getStatusBadge(report?.status);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Stack.Screen
         options={{
           title: 'Crear caso',
@@ -251,7 +288,8 @@ export default function NewCaseScreen() {
           <Text style={styles.submitButtonText}>Confirmar creación del caso</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
@@ -262,19 +264,6 @@ export default function AuthorityCaseDetailScreen() {
           headerStyle: { backgroundColor: '#1E3A8A' },
           headerTintColor: '#FFFFFF',
           headerTitleStyle: { fontWeight: '700' },
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={() =>
-                Alert.alert(
-                  'Expediente Institucional',
-                  'Este expediente consolida las actuaciones, estudiantes involucrados y reportes conforme a las normativas de convivencia escolar.'
-                )
-              }
-              style={{ marginRight: 4 }}
-            >
-              <Ionicons name="settings-sharp" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-          ),
         }}
       />
 
@@ -517,7 +506,10 @@ export default function AuthorityCaseDetailScreen() {
         animationType="slide"
         onRequestClose={() => setAddStudentModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Agregar estudiante</Text>
@@ -606,7 +598,7 @@ export default function AuthorityCaseDetailScreen() {
               </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal: Detalle de estudiante */}
@@ -678,7 +670,10 @@ export default function AuthorityCaseDetailScreen() {
         animationType="slide"
         onRequestClose={() => setResolveModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Concluir Caso Formal</Text>
@@ -725,7 +720,7 @@ export default function AuthorityCaseDetailScreen() {
               </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
   );

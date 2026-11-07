@@ -259,6 +259,17 @@ export default function StudentRegisterScreen() {
       return;
     }
 
+    const selectedDateObj = new Date(tempYear, parseInt(tempMonth, 10) - 1, tempDay);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    if (selectedDateObj > todayEnd) {
+      Alert.alert(
+        'Fecha inválida',
+        'La fecha de nacimiento no puede ser posterior al día de hoy.'
+      );
+      return;
+    }
+
     const formattedDay = tempDay.toString().padStart(2, '0');
     const isoDate = `${tempYear}-${tempMonth}-${formattedDay}`;
     setBirthDate(isoDate);
@@ -322,43 +333,61 @@ export default function StudentRegisterScreen() {
       setRegistering(true);
 
       // 1. Crear usuario en Supabase Auth
+      const normalizedEmail = email.trim().toLowerCase();
       const { data: authData, error: authErr } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password,
       });
 
-      // Detección precisa de correo electrónico duplicado
-      if (authErr) {
-        const errLower = authErr.message.toLowerCase();
-        if (
-          errLower.includes('already registered') ||
-          errLower.includes('already exists') ||
-          errLower.includes('user already exists') ||
-          authErr.status === 422
-        ) {
+      let targetUserId: string | null = authData?.user?.id ?? null;
+      const isDuplicateAuthUser =
+        (authErr &&
+          (authErr.message.toLowerCase().includes('already registered') ||
+            authErr.message.toLowerCase().includes('already exists') ||
+            authErr.message.toLowerCase().includes('user already exists') ||
+            authErr.status === 422)) ||
+        Boolean(authData?.user && authData.user.identities && authData.user.identities.length === 0);
+
+      if (isDuplicateAuthUser) {
+        // Verificar si corresponde a un intento previo incompleto (ej. error de DNI) o cuenta eliminada de public.profiles
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        });
+
+        if (!signInErr && signInData?.user) {
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', signInData.user.id)
+            .maybeSingle();
+
+          if (!existingProfile) {
+            targetUserId = signInData.user.id;
+          } else {
+            await supabase.auth.signOut().catch(() => {});
+            const msg = 'El correo electrónico ya se encuentra en uso por otro usuario.';
+            setErrorMessage(msg);
+            Alert.alert('No se puede registrar', msg);
+            return;
+          }
+        } else {
           const msg = 'El correo electrónico ya se encuentra en uso por otro usuario.';
           setErrorMessage(msg);
           Alert.alert('No se puede registrar', msg);
           return;
         }
+      } else if (authErr) {
         throw authErr;
       }
 
-      // En Supabase con "prevent user enumeration", si el email ya existe retorna identities vacío
-      if (authData.user && authData.user.identities && authData.user.identities.length === 0) {
-        const msg = 'El correo electrónico ya se encuentra en uso por otro usuario.';
-        setErrorMessage(msg);
-        Alert.alert('No se puede registrar', msg);
-        return;
-      }
-
-      if (!authData.user) {
+      if (!targetUserId) {
         throw new Error('No se pudo crear la cuenta de usuario.');
       }
 
       // 2. Completar perfil en PostgreSQL via RPC atómica
       const regResult = await CoursesService.completeRegistration({
-        userId: authData.user.id,
+        userId: targetUserId,
         token: qrToken,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -400,7 +429,8 @@ export default function StudentRegisterScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.keyboardView}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
     >
       <Stack.Screen
         options={{
@@ -877,8 +907,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 32,
     flexGrow: 1,
-    justifyContent: 'center',
   },
   card: {
     padding: 20,

@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
   Alert,
   TouchableOpacity,
   TextInput,
@@ -279,6 +281,29 @@ export default function NewCaseActScreen() {
       return;
     }
 
+    if (!actDate.trim()) {
+      Alert.alert('Fecha requerida', 'Por favor ingresá la fecha de la actuación.');
+      return;
+    }
+
+    const timeMatch = actTime.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!timeMatch) {
+      Alert.alert(
+        'Hora inválida',
+        'Por favor ingresá la hora en formato HH:MM (por ejemplo, 09:30 o 14:15).'
+      );
+      return;
+    }
+    const parsedHour = parseInt(timeMatch[1], 10);
+    const parsedMin = parseInt(timeMatch[2], 10);
+    if (parsedHour < 0 || parsedHour > 23 || parsedMin < 0 || parsedMin > 59) {
+      Alert.alert(
+        'Hora inválida',
+        'La hora debe estar entre las 00:00 y las 23:59.'
+      );
+      return;
+    }
+
     if (!profile?.id || !profile.institution_id || !caseId) {
       Alert.alert('Error', 'Datos de sesión incompletos.');
       return;
@@ -412,7 +437,12 @@ export default function NewCaseActScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Stack.Screen
         options={{
           headerTitle: () => (
@@ -723,7 +753,8 @@ export default function NewCaseActScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

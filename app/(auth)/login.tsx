@@ -8,12 +8,13 @@ import {
   Platform,
   Alert,
   TouchableOpacity,
+  TextInput,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Input } from '../../src/components/ui/Input';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/ui/Button';
-import { Card } from '../../src/components/ui/Card';
 import { AuthService } from '../../src/services/auth.service';
 import { useAuthStore } from '../../src/store/auth.store';
 
@@ -25,11 +26,13 @@ export default function LoginScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusBlockedInfo, setStatusBlockedInfo] = useState<string | null>(null);
 
-  const { setSession, setProfile } = useAuthStore();
+  const { setSession, setProfile, sessionTimeoutMessage, setSessionTimeoutMessage } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   const handleLogin = async () => {
     setErrorMessage(null);
     setStatusBlockedInfo(null);
+    setSessionTimeoutMessage(null);
 
     if (!email.trim() || !password) {
       setErrorMessage('Por favor, ingresá tu correo y contraseña.');
@@ -94,26 +97,66 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.keyboardView}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
+      {/* Elementos decorativos de fondo (ondas suaves celestes) */}
+      <View style={styles.bgDecorTopRight} pointerEvents="none" />
+      <View style={styles.bgDecorTopLeft} pointerEvents="none" />
+      <View style={styles.bgDecorBottom} pointerEvents="none" />
+
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: Math.max(insets.top, 24) + 16,
+            paddingBottom: Math.max(insets.bottom, 20) + 16,
+          },
+        ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
+        {/* Cabecera institucional con logo y título */}
         <View style={styles.header}>
-          <Text style={styles.appTitle}>Centinel</Text>
-          <Text style={styles.appSubtitle}>
-            Canal de Comunicación y Convivencia Escolar
-          </Text>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.logoImage}
+            resizeMode="cover"
+          />
+          <View style={styles.verticalDivider} />
+          <View style={styles.headerTextGroup}>
+            <Text style={styles.appTitle}>Centinel</Text>
+            <Text style={styles.appSubtitle}>
+              Canal de Comunicación y{'\n'}Convivencia Escolar
+            </Text>
+          </View>
         </View>
 
-        <Card style={styles.card}>
+        {/* Tarjeta de Inicio de Sesión */}
+        <View style={styles.card}>
           <Text style={styles.formTitle}>Iniciar sesión</Text>
+
+          {sessionTimeoutMessage && (
+            <View style={styles.alertBoxWarning}>
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={18}
+                color="#B45309"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.alertTextWarning}>{sessionTimeoutMessage}</Text>
+            </View>
+          )}
 
           {statusBlockedInfo && (
             <View style={styles.alertBoxWarning}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                <Ionicons name="time-outline" size={18} color="#92400E" style={{ marginRight: 6 }} />
+                <Ionicons
+                  name="time-outline"
+                  size={18}
+                  color="#92400E"
+                  style={{ marginRight: 6 }}
+                />
                 <Text style={styles.alertTitleWarning}>Esperando aprobación escolar</Text>
               </View>
               <Text style={styles.alertTextWarning}>{statusBlockedInfo}</Text>
@@ -126,40 +169,66 @@ export default function LoginScreen() {
             </View>
           )}
 
-          <Input
-            label="Correo electrónico"
-            placeholder="ejemplo@correo.com"
-            helperText="Usá el correo registrado en tu cuenta."
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          {/* Campo: Correo electrónico */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Correo electrónico</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color="#2563EB"
+                style={styles.inputLeftIcon}
+              />
+              <TextInput
+                style={styles.textInputField}
+                placeholder="ejemplo@correo.com"
+                placeholderTextColor="#94A3B8"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+            <Text style={styles.helperText}>Usá el correo registrado en tu cuenta.</Text>
+          </View>
 
-          <Input
-            label="Contraseña"
-            placeholder="Ingresá tu contraseña"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            rightAccessory={
+          {/* Campo: Contraseña */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Contraseña</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color="#64748B"
+                style={styles.inputLeftIcon}
+              />
+              <TextInput
+                style={styles.textInputField}
+                placeholder="Ingresá tu contraseña"
+                placeholderTextColor="#94A3B8"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
               <TouchableOpacity
                 onPress={() => setShowPassword((prev) => !prev)}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 activeOpacity={0.7}
+                style={styles.eyeIconBtn}
                 accessibilityRole="button"
                 accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
               >
                 <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                   size={22}
                   color="#64748B"
                 />
               </TouchableOpacity>
-            }
-          />
+            </View>
+          </View>
 
+          {/* Enlace: Olvidaste tu contraseña */}
           <View style={styles.forgotPasswordRow}>
             <TouchableOpacity
               onPress={() => router.push('/(auth)/forgot-password')}
@@ -170,6 +239,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Botón: Ingresar */}
           <Button
             title="Ingresar"
             onPress={handleLogin}
@@ -177,21 +247,25 @@ export default function LoginScreen() {
             style={styles.loginButton}
           />
 
+          {/* Separador */}
           <View style={styles.dividerBox}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>¿Sos estudiante nuevo?</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          <Button
-            title="Registrarse con código QR"
-            variant="secondary"
-            icon={<Ionicons name="qr-code-outline" size={18} color="#0F172A" />}
+          {/* Botón: Registrarse con código QR */}
+          <TouchableOpacity
+            style={styles.qrButton}
             onPress={() => router.push('/(auth)/register')}
-            style={styles.registerButton}
-          />
-        </Card>
+            activeOpacity={0.7}
+          >
+            <Ionicons name="qr-code-outline" size={20} color="#1E3A8A" style={styles.qrIcon} />
+            <Text style={styles.qrButtonText}>Registrarse con código QR</Text>
+          </TouchableOpacity>
+        </View>
 
+        {/* Pie de pantalla / avisos */}
         <View style={styles.footerNotice}>
           <Text style={styles.noticeText}>
             El registro requiere un código QR institucional y la aprobación de una autoridad educativa.
@@ -208,31 +282,92 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
+    position: 'relative',
+  },
+  bgDecorTopRight: {
+    position: 'absolute',
+    top: -60,
+    right: -40,
+    width: 240,
+    height: 180,
+    borderRadius: 100,
+    backgroundColor: '#DBEAFE',
+    opacity: 0.5,
+    transform: [{ rotate: '-15deg' }, { scaleX: 1.4 }],
+  },
+  bgDecorTopLeft: {
+    position: 'absolute',
+    top: -40,
+    left: -60,
+    width: 200,
+    height: 160,
+    borderRadius: 90,
+    backgroundColor: '#EFF6FF',
+    opacity: 0.7,
+    transform: [{ rotate: '20deg' }, { scaleX: 1.3 }],
+  },
+  bgDecorBottom: {
+    position: 'absolute',
+    bottom: -70,
+    left: -30,
+    right: -30,
+    height: 150,
+    borderRadius: 100,
+    backgroundColor: '#DBEAFE',
+    opacity: 0.45,
+    transform: [{ rotate: '-3deg' }],
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  logoImage: {
+    width: 68,
+    height: 68,
+    borderRadius: 18,
+  },
+  verticalDivider: {
+    width: 1.5,
+    height: 48,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 14,
+  },
+  headerTextGroup: {
+    justifyContent: 'center',
   },
   appTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: '#1E3A8A',
-    letterSpacing: 0.5,
+    letterSpacing: -0.5,
   },
   appSubtitle: {
-    fontSize: 14,
-    color: '#475569',
-    marginTop: 4,
-    textAlign: 'center',
+    fontSize: 13,
+    color: '#334155',
+    lineHeight: 18,
+    fontWeight: '500',
+    marginTop: 2,
   },
   card: {
-    padding: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#1E3A8A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    elevation: 4,
   },
   formTitle: {
     fontSize: 20,
@@ -241,18 +376,56 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  loginButton: {
+  inputGroup: {
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 6,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  inputLeftIcon: {
+    marginRight: 8,
+  },
+  textInputField: {
+    flex: 1,
+    fontSize: 15,
+    color: '#0F172A',
+    height: '100%',
+  },
+  eyeIconBtn: {
+    padding: 4,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#64748B',
     marginTop: 4,
   },
   forgotPasswordRow: {
     alignItems: 'flex-end',
-    marginTop: -4,
+    marginTop: 2,
     marginBottom: 18,
   },
   forgotPasswordText: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#1E3A8A',
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
+  loginButton: {
+    borderRadius: 12,
+    paddingVertical: 13,
+    backgroundColor: '#1E3A8A',
   },
   dividerBox: {
     flexDirection: 'row',
@@ -262,18 +435,31 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: '#E2E8F0',
   },
   dividerText: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: '#64748B',
     paddingHorizontal: 10,
     fontWeight: '500',
   },
-  registerButton: {
-    backgroundColor: '#F1F5F9',
-    borderColor: '#94A3B8',
-    borderWidth: 1,
+  qrButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#1E3A8A',
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  qrIcon: {
+    marginRight: 8,
+  },
+  qrButtonText: {
+    color: '#1E3A8A',
+    fontSize: 14.5,
+    fontWeight: '700',
   },
   alertBoxError: {
     backgroundColor: '#FEF2F2',
@@ -312,18 +498,18 @@ const styles = StyleSheet.create({
   footerNotice: {
     marginTop: 20,
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
   noticeText: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   noticeSubtext: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: '#64748B',
     textAlign: 'center',
     fontWeight: '500',
   },

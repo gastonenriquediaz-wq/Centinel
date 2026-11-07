@@ -46,8 +46,8 @@ export default function NewCourseScreen() {
     }
 
     const parsedSchoolYear = parseInt(schoolYear, 10);
-    if (isNaN(parsedSchoolYear) || parsedSchoolYear < 2020 || parsedSchoolYear > 2100) {
-      setErrorMessage('Ingresá un ciclo lectivo válido (entre 2020 y 2100).');
+    if (isNaN(parsedSchoolYear) || parsedSchoolYear < 2024 || parsedSchoolYear > 2100) {
+      setErrorMessage('Ingresá un ciclo lectivo válido (entre 2024 y 2100).');
       return;
     }
 
@@ -84,7 +84,8 @@ export default function NewCourseScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.keyboardView}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Stack.Screen options={{ title: 'Nuevo Curso', headerBackTitle: 'Cursos' }} />
@@ -146,6 +147,7 @@ export default function NewCourseScreen() {
           <Input
             label="Cantidad estimada de estudiantes"
             placeholder="Ej: 30"
+            helperText="Dato orientativo para estadísticas. No limita el registro si el curso tiene más estudiantes."
             value={estimatedStudents}
             onChangeText={setEstimatedStudents}
             keyboardType="numeric"
