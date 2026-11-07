@@ -1,11 +1,14 @@
-import React, { useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { Alert, Platform, AppState, AppStateStatus, View } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/auth.store';
 import { AuthService } from '../src/services/auth.service';
 import { supabase } from '../src/services/supabase';
+
+// Tiempo máximo de inactividad antes del auto-logout (5 minutos = 300.000 ms)
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 
 // Polyfill de Alert.alert para navegadores Web
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -33,7 +36,118 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 
 export default function RootLayout() {
   const segments = useSegments();
-  const { setSession, setProfile, setLoading, reset, profile, session, isLoading } = useAuthStore();
+  const {
+    setSession,
+    setProfile,
+    setLoading,
+    reset,
+    profile,
+    session,
+    isLoading,
+    setSessionTimeoutMessage,
+  } = useAuthStore();
+
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const appStateRef = useRef<AppStateStatus>((AppState.currentState as AppStateStatus) || 'active');
+  const backgroundTimeRef = useRef<number | null>(null);
+
+  // Función para cerrar la sesión por inactividad
+  const logoutDueToInactivity = useCallback(async () => {
+    if (!useAuthStore.getState().session) return;
+
+    try {
+      await AuthService.signOut();
+    } catch {}
+
+    reset();
+    setSessionTimeoutMessage(
+      'Tu sesión se cerró automáticamente tras 5 minutos de inactividad para proteger tu privacidad.'
+    );
+    router.replace('/(auth)/login');
+  }, [reset, setSessionTimeoutMessage]);
+
+  // Reiniciar el contador de inactividad de 5 minutos
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+
+    // Solo activamos temporizador si hay una sesión activa
+    if (useAuthStore.getState().session) {
+      inactivityTimerRef.current = setTimeout(() => {
+        logoutDueToInactivity();
+      }, INACTIVITY_TIMEOUT_MS);
+    }
+  }, [logoutDueToInactivity]);
+
+  // Detector de toque global para reiniciar inactividad
+  const handleTouchActivity = () => {
+    resetInactivityTimer();
+  };
+
+  // Escuchar cuando la app pasa a segundo plano o vuelve al primer plano
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      const currentSession = useAuthStore.getState().session;
+
+      // 1. Cuando la app pasa a segundo plano (background) o pantalla bloqueada
+      if (
+        appStateRef.current === 'active' &&
+        (nextAppState === 'background' || nextAppState === 'inactive')
+      ) {
+        if (currentSession) {
+          backgroundTimeRef.current = Date.now();
+        }
+        if (inactivityTimerRef.current) {
+          clearTimeout(inactivityTimerRef.current);
+        }
+      }
+
+      // 2. Cuando la app vuelve al primer plano (active)
+      if (appStateRef.current !== 'active' && nextAppState === 'active') {
+        if (currentSession && backgroundTimeRef.current !== null) {
+          const elapsed = Date.now() - backgroundTimeRef.current;
+          backgroundTimeRef.current = null;
+
+          const { isNativeDialogOpen, suppressAutoLogoutUntil } = useAuthStore.getState();
+          const isDialogProtected = isNativeDialogOpen || Date.now() <= suppressAutoLogoutUntil;
+
+          if (elapsed >= INACTIVITY_TIMEOUT_MS && !isDialogProtected) {
+            logoutDueToInactivity();
+            appStateRef.current = nextAppState;
+            return;
+          }
+        }
+        // Si regresó dentro de la ventana de 5 minutos, reactivamos el temporizador de interacción
+        if (currentSession) {
+          resetInactivityTimer();
+        }
+      }
+
+      appStateRef.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [logoutDueToInactivity, resetInactivityTimer]);
+
+  // Gestionar el temporizador cuando cambia el estado de sesión
+  useEffect(() => {
+    if (session) {
+      resetInactivityTimer();
+    } else {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+      backgroundTimeRef.current = null;
+    }
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, [session, resetInactivityTimer]);
 
   // Guarda global de navegación reactiva por roles y estado de cuenta
   useEffect(() => {
@@ -110,8 +224,10 @@ export default function RootLayout() {
     // 2. Suscribirse a cambios de estado de autenticación de Supabase
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
+        // Solo limpiamos el store; la guarda reactiva de navegación redirigirá a /(auth)/login
+        // únicamente si el usuario estaba dentro de /(student) o /(authority), evitando
+        // expulsar al estudiante de /(auth)/register tras completar su registro.
         reset();
-        router.replace('/(auth)/login');
       }
     });
 
@@ -123,38 +239,46 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: '#1E3A8A' },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontWeight: 'bold' },
+      <View
+        style={{ flex: 1 }}
+        onStartShouldSetResponderCapture={() => {
+          handleTouchActivity();
+          return false; // Permite que los toques sigan fluyendo normalmente a los botones e inputs
         }}
       >
-        <Stack.Screen
-          name="(auth)/login"
-          options={{ title: 'Centinel - Acceso', headerShown: false }}
-        />
-        <Stack.Screen
-          name="(auth)/register"
-          options={{ title: 'Registro de Estudiante', headerShown: true }}
-        />
-        <Stack.Screen
-          name="(auth)/forgot-password"
-          options={{ title: 'Recuperar acceso', headerShown: true }}
-        />
-        <Stack.Screen
-          name="(student)/index"
-          options={{ title: 'Centinel', headerShown: true }}
-        />
-        <Stack.Screen
-          name="(authority)/index"
-          options={{ title: 'Centinel', headerShown: true }}
-        />
-        <Stack.Screen
-          name="index"
-          options={{ headerShown: false }}
-        />
-      </Stack>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: '#1E3A8A' },
+            headerTintColor: '#FFFFFF',
+            headerTitleStyle: { fontWeight: 'bold' },
+          }}
+        >
+          <Stack.Screen
+            name="(auth)/login"
+            options={{ title: 'Centinel - Acceso', headerShown: false }}
+          />
+          <Stack.Screen
+            name="(auth)/register"
+            options={{ title: 'Registro de Estudiante', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(auth)/forgot-password"
+            options={{ title: 'Recuperar acceso', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(student)/index"
+            options={{ title: 'Centinel', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/index"
+            options={{ title: 'Centinel', headerShown: true }}
+          />
+          <Stack.Screen
+            name="index"
+            options={{ headerShown: false }}
+          />
+        </Stack>
+      </View>
     </SafeAreaProvider>
   );
 }
