@@ -3,7 +3,7 @@
     "name": "Centinel",
     "slug": "centinel",
     "scheme": "centinel",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -11,11 +11,12 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.centinel.app",
+      "versionCode": 2,
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#023FB4",
+        "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -30,6 +31,17 @@
       "expo-secure-store",
       "expo-sharing",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "8018742a-79ea-4c13-a073-120f4cf56101"
+      }
+    },
+    "owner": "dextructor"
   }
 }

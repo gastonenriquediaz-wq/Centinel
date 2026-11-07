@@ -15,6 +15,7 @@ import {
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../../src/store/auth.store';
+import { useStealthStore } from '../../../../src/store/stealth.store';
 import { MessagesService } from '../../../../src/services/messages.service';
 import { ReportsService } from '../../../../src/services/reports.service';
 import { Report, ReportMessage } from '../../../../src/types/database.types';
@@ -34,7 +35,12 @@ export default function StudentReportChatScreen() {
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
+      () => {
+        setKeyboardVisible(true);
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
@@ -75,6 +81,13 @@ export default function StudentReportChatScreen() {
 
   const loadInitialData = async () => {
     try {
+      const stealthActive = await useStealthStore.getState().loadStealthMode();
+      if (stealthActive || useStealthStore.getState().checkIfActive()) {
+        setLoading(false);
+        router.replace('/(student)/reports');
+        return;
+      }
+
       const [repRes, msgRes] = await Promise.all([
         ReportsService.getReportDetails(id as string),
         MessagesService.getMessages(id as string),
@@ -141,8 +154,8 @@ export default function StudentReportChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
     >
       <Stack.Screen
         options={{
@@ -171,6 +184,7 @@ export default function StudentReportChatScreen() {
           data={messages}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesList}
+          keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           ListEmptyComponent={
