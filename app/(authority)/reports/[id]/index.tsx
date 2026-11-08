@@ -206,6 +206,7 @@ export default function AuthorityReportDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Detalle del reporte' }} />
         <ActivityIndicator size="large" color="#1E3A8A" />
       </View>
     );
@@ -214,6 +215,7 @@ export default function AuthorityReportDetailScreen() {
   if (!report) {
     return (
       <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Detalle del reporte' }} />
         <Text style={styles.errorText}>No se pudo cargar el reporte.</Text>
         <Button title="Volver" onPress={() => router.back()} style={styles.backButton} />
       </View>
@@ -243,20 +245,6 @@ export default function AuthorityReportDetailScreen() {
               activeOpacity={0.7}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={() =>
-                Alert.alert(
-                  'Detalle de Auditoría',
-                  `ID: ${report.id}\nEstado: ${report.status}\nFecha creación: ${report.created_at}`
-                )
-              }
-              style={styles.headerNavBtn}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="settings-sharp" size={20} color="#BFDBFE" />
             </TouchableOpacity>
           ),
         }}

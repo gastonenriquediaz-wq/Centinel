@@ -144,6 +144,7 @@ export default function NewCaseScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Crear caso' }} />
         <ActivityIndicator size="large" color="#1E3A8A" />
       </View>
     );

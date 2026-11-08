@@ -210,6 +210,7 @@ export default function AuthorityCaseDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Expediente de Caso', headerBackTitle: 'Casos' }} />
         <ActivityIndicator size="large" color="#1E3A8A" />
       </View>
     );
@@ -218,6 +219,7 @@ export default function AuthorityCaseDetailScreen() {
   if (!caseItem) {
     return (
       <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Expediente de Caso', headerBackTitle: 'Casos' }} />
         <Text style={styles.errorText}>No se pudo cargar el caso.</Text>
         <Button title="Volver" onPress={() => router.back()} style={styles.backBtn} />
       </View>

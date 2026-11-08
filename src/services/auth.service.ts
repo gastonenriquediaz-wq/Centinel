@@ -16,15 +16,24 @@ export const AuthService = {
     }
 
     // Obtener el perfil asociado en public.profiles
-    const { profile, institution, course } = await this.getProfile(data.user.id);
-    return { session: data.session, user: data.user, profile, institution, course };
+    try {
+      const { profile, institution, course } = await this.getProfile(
+        data.user.id,
+        data.user.email
+      );
+      return { session: data.session, user: data.user, profile, institution, course };
+    } catch (err) {
+      await supabase.auth.signOut().catch(() => {});
+      throw err;
+    }
   },
 
   /**
    * Obtiene el perfil de un usuario, su institución y curso asignado.
    */
   async getProfile(
-    userId: string
+    userId: string,
+    userEmail?: string
   ): Promise<{ profile: Profile; institution: Institution | null; course: Course | null }> {
     const { data: profile, error } = await supabase
       .from('profiles')
@@ -36,6 +45,20 @@ export const AuthService = {
       throw new Error('No se pudo encontrar el perfil del usuario.');
     }
 
+    // Normalizar el cargo oficial para cuentas de autoridad (Director vs Vicedirector)
+    if (profile.role === 'authority') {
+      let emailToCheck = userEmail?.toLowerCase() || '';
+      if (!emailToCheck) {
+        const { data: userData } = await supabase.auth.getUser();
+        emailToCheck = userData?.user?.email?.toLowerCase() || '';
+      }
+      if (emailToCheck.includes('vicedirector')) {
+        profile.position = 'Vicedirector';
+      } else if (emailToCheck.includes('director')) {
+        profile.position = 'Director';
+      }
+    }
+
     let institution: Institution | null = null;
     if (profile.institution_id) {
       const { data: instData } = await supabase
@@ -43,7 +66,12 @@ export const AuthService = {
         .select('*')
         .eq('id', profile.institution_id)
         .single();
-      institution = instData ?? null;
+      if (instData) {
+        if (/Colegio Secundario Modelo San Mart[ií]n/i.test(instData.name)) {
+          instData.name = 'Colegio Secundario Modelo de Salta';
+        }
+        institution = instData;
+      }
     }
 
     let course: Course | null = null;

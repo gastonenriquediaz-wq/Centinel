@@ -182,6 +182,7 @@ export default function AuthorityCaseHistoryScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Historial de operaciones', headerBackTitle: 'Expediente' }} />
         <ActivityIndicator size="large" color="#1E3A8A" />
       </View>
     );
@@ -190,6 +191,7 @@ export default function AuthorityCaseHistoryScreen() {
   if (!caseItem) {
     return (
       <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Historial de operaciones', headerBackTitle: 'Expediente' }} />
         <Text style={styles.errorText}>No se pudo cargar el caso.</Text>
         <Button
           title="Volver"

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../../../src/components/ui/Card';
 import { Button } from '../../../../src/components/ui/Button';
 import { useAuthStore } from '../../../../src/store/auth.store';
+import { useStealthStore } from '../../../../src/store/stealth.store';
 import { ReportsService } from '../../../../src/services/reports.service';
 import { supabase } from '../../../../src/services/supabase';
 import { Report, ReportStatus } from '../../../../src/types/database.types';
@@ -44,6 +45,13 @@ export default function StudentReportDetailScreen() {
   const loadReport = useCallback(async () => {
     if (!id) return;
     try {
+      const stealthActive = await useStealthStore.getState().loadStealthMode();
+      if (stealthActive || useStealthStore.getState().checkIfActive()) {
+        setLoading(false);
+        router.replace('/(student)/reports');
+        return;
+      }
+
       const { data, error } = await ReportsService.getReportDetails(id as string);
       if (!error && data) {
         setReport(data);
@@ -200,6 +208,7 @@ export default function StudentReportDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Detalle de Reporte', headerBackTitle: 'Reportes' }} />
         <ActivityIndicator size="large" color="#1E3A8A" />
       </View>
     );
@@ -208,6 +217,7 @@ export default function StudentReportDetailScreen() {
   if (!report) {
     return (
       <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Detalle de Reporte', headerBackTitle: 'Reportes' }} />
         <Text style={styles.errorText}>No se pudo cargar el reporte.</Text>
         <Button title="Volver" onPress={() => router.back()} style={styles.backButton} />
       </View>

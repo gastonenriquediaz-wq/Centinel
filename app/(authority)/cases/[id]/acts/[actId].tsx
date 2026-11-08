@@ -156,6 +156,7 @@ export default function AuthorityCaseActDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Detalle de la Actuación', headerBackTitle: 'Expediente' }} />
         <ActivityIndicator size="large" color="#1E3A8A" />
       </View>
     );

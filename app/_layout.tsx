@@ -253,6 +253,7 @@ export default function RootLayout() {
             headerTitleStyle: { fontWeight: 'bold' },
           }}
         >
+          {/* Rutas de Autenticación */}
           <Stack.Screen
             name="(auth)/login"
             options={{ title: 'Centinel - Acceso', headerShown: false }}
@@ -265,14 +266,119 @@ export default function RootLayout() {
             name="(auth)/forgot-password"
             options={{ title: 'Recuperar acceso', headerShown: true }}
           />
+
+          {/* Rutas de Estudiante */}
           <Stack.Screen
             name="(student)/index"
             options={{ title: 'Centinel', headerShown: true }}
           />
           <Stack.Screen
+            name="(student)/reports/index"
+            options={{ title: 'Mis reportes', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(student)/reports/new"
+            options={{ title: 'Nuevo reporte', headerShown: false }}
+          />
+          <Stack.Screen
+            name="(student)/reports/[id]/index"
+            options={{ title: 'Detalle de Reporte', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(student)/reports/[id]/chat"
+            options={{ title: 'Comunicación con Autoridades', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(student)/education/index"
+            options={{ title: 'Módulo Educativo', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(student)/education/[id]"
+            options={{ title: 'Módulo Educativo', headerShown: true }}
+          />
+
+          {/* Rutas de Autoridad Educativa */}
+          <Stack.Screen
             name="(authority)/index"
             options={{ title: 'Centinel', headerShown: true }}
           />
+          <Stack.Screen
+            name="(authority)/reports/index"
+            options={{ title: 'Reportes recibidos', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/reports/[id]/index"
+            options={{ title: 'Detalle del reporte', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/reports/[id]/chat"
+            options={{ title: 'Comunicación con Estudiante', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/reports/[id]/link-case"
+            options={{ title: 'Vincular a caso existente', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/cases/index"
+            options={{ title: 'Casos y Protocolos', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/cases/new"
+            options={{ title: 'Crear caso', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/cases/[id]/index"
+            options={{ title: 'Expediente de Caso', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/cases/[id]/history"
+            options={{ title: 'Historial de operaciones', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/cases/[id]/acts/new"
+            options={{ title: 'Registrar actuación en el caso', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/cases/[id]/acts/[actId]"
+            options={{ title: 'Detalle de la Actuación', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/courses/index"
+            options={{ title: 'Cursos y Códigos QR/Alfanuméricos', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/courses/new"
+            options={{ title: 'Nuevo Curso', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/courses/[id]/qr"
+            options={{ title: 'Código QR de Curso', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/courses/[id]/code"
+            options={{ title: 'Código de Registro', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/courses/[id]/students"
+            options={{ title: 'Estudiantes del Curso', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/requests/index"
+            options={{ title: 'Solicitudes de Registro', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/statistics/index"
+            options={{ title: 'Estadísticas de Convivencia', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/education/index"
+            options={{ title: 'Módulo Educativo y Preventivo', headerShown: true }}
+          />
+          <Stack.Screen
+            name="(authority)/education/[id]"
+            options={{ title: 'Módulo Educativo y Preventivo', headerShown: true }}
+          />
+
           <Stack.Screen
             name="index"
             options={{ headerShown: false }}
