@@ -254,21 +254,21 @@ export default function LoginScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Botón: Registrarse con código QR */}
+          {/* Botón: Registrarse con QR o código */}
           <TouchableOpacity
             style={styles.qrButton}
             onPress={() => router.push('/(auth)/register')}
             activeOpacity={0.7}
           >
             <Ionicons name="qr-code-outline" size={20} color="#1E3A8A" style={styles.qrIcon} />
-            <Text style={styles.qrButtonText}>Registrarse con código QR</Text>
+            <Text style={styles.qrButtonText}>Registrarse con QR o código</Text>
           </TouchableOpacity>
         </View>
 
         {/* Pie de pantalla / avisos */}
         <View style={styles.footerNotice}>
           <Text style={styles.noticeText}>
-            El registro requiere un código QR institucional y la aprobación de una autoridad educativa.
+            El registro requiere un código institucional (QR o alfanumérico) y la aprobación de una autoridad educativa.
           </Text>
           <Text style={styles.noticeSubtext}>
             Proyecto de grado · Universidad Católica de Salta
