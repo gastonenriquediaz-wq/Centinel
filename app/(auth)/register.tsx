@@ -317,9 +317,15 @@ export default function StudentRegisterScreen() {
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
-      Alert.alert('Contraseña débil', 'La contraseña debe tener al menos 8 caracteres.');
+    const hasUppercase = /[A-ZÁÉÍÓÚÑ]/.test(password);
+    const hasLowercase = /[a-záéíóúñ]/.test(password);
+    const hasNumber = /\d/.test(password);
+
+    if (password.length < 8 || !hasUppercase || !hasLowercase || !hasNumber) {
+      const msg =
+        'La contraseña debe tener al menos 8 caracteres, una letra mayúscula, letras minúsculas y al menos un número.';
+      setErrorMessage(msg);
+      Alert.alert('Contraseña débil', msg);
       return;
     }
 
@@ -653,7 +659,7 @@ export default function StudentRegisterScreen() {
               <Ionicons name="lock-closed-outline" size={18} color="#64748B" style={styles.fieldIcon} />
               <TextInput
                 style={styles.fieldInput}
-                placeholder="Mínimo 8 caracteres"
+                placeholder="Mínimo 8 caracteres, mayúscula y número"
                 placeholderTextColor="#94A3B8"
                 value={password}
                 onChangeText={setPassword}
@@ -670,6 +676,9 @@ export default function StudentRegisterScreen() {
                 />
               </TouchableOpacity>
             </View>
+            <Text style={styles.helperText}>
+              La contraseña debe tener al menos 8 caracteres, una letra mayúscula, letras minúsculas y al menos un número.
+            </Text>
 
             {/* Confirmar contraseña */}
             <Text style={styles.fieldLabel}>Confirmar contraseña *</Text>
