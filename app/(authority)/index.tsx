@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { router, useFocusEffect, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +20,7 @@ export default function AuthorityDashboard() {
   const [inProgressReportsCount, setInProgressReportsCount] = useState<number>(0);
   const [activeCasesCount, setActiveCasesCount] = useState<number>(0);
   const [unreadChatsCount, setUnreadChatsCount] = useState<number>(0);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
 
   const loadDashboardMetrics = async () => {
     if (!profile?.institution_id) return;
@@ -118,27 +119,11 @@ export default function AuthorityDashboard() {
             <View style={styles.headerRightIcons}>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() =>
-                  Alert.alert(
-                    'Perfil de Autoridad',
-                    `Usuario: ${profile?.first_name} ${profile?.last_name}\nCargo: ${profile?.position || 'Director'}\nInstitución: ${institution?.name || ''}`
-                  )
-                }
+                onPress={() => setProfileModalVisible(true)}
                 style={styles.headerIconBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="person-circle" size={28} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() =>
-                  Alert.alert(
-                    'Configuración',
-                    `Centinel v1.0.0\n${institution?.name || ''}\nSistema de Convivencia Escolar.`
-                  )
-                }
-                style={styles.headerIconBtn}
-              >
-                <Ionicons name="settings-sharp" size={22} color="#FFFFFF" />
+                <Ionicons name="person-circle" size={30} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           ),
@@ -379,6 +364,85 @@ export default function AuthorityDashboard() {
           textStyle={styles.logoutButtonText}
         />
       </ScrollView>
+
+      {/* Modal de Perfil de Autoridad */}
+      <Modal
+        visible={profileModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setProfileModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.profileModalCard}>
+            {/* Cabecera del modal */}
+            <View style={styles.profileModalHeader}>
+              <View style={styles.profileAvatarCircle}>
+                <Ionicons name="person" size={32} color="#1E3A8A" />
+              </View>
+              <Text style={styles.profileModalTitle}>Perfil Institucional</Text>
+              <Text style={styles.profileModalRole}>AUTORIDAD EDUCATIVA</Text>
+            </View>
+
+            {/* Campos de información estilizados */}
+            <View style={styles.profileInfoList}>
+              <View style={styles.profileInfoItem}>
+                <View style={styles.profileInfoIconWrap}>
+                  <Ionicons name="person-outline" size={18} color="#1E3A8A" />
+                </View>
+                <View style={styles.profileInfoTextCol}>
+                  <Text style={styles.profileInfoLabel}>Nombre y apellido</Text>
+                  <Text style={styles.profileInfoValue}>
+                    {profile?.first_name} {profile?.last_name}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.profileInfoItem}>
+                <View style={styles.profileInfoIconWrap}>
+                  <Ionicons name="ribbon-outline" size={18} color="#1E3A8A" />
+                </View>
+                <View style={styles.profileInfoTextCol}>
+                  <Text style={styles.profileInfoLabel}>Cargo oficial</Text>
+                  <Text style={styles.profileInfoValue}>
+                    {profile?.position || 'Director'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.profileInfoItem}>
+                <View style={styles.profileInfoIconWrap}>
+                  <Ionicons name="school-outline" size={18} color="#1E3A8A" />
+                </View>
+                <View style={styles.profileInfoTextCol}>
+                  <Text style={styles.profileInfoLabel}>Institución escolar</Text>
+                  <Text style={styles.profileInfoValue}>
+                    {institution?.name || 'Colegio Secundario Modelo de Salta'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.profileInfoItemLast}>
+                <View style={styles.profileInfoIconWrap}>
+                  <Ionicons name="shield-checkmark-outline" size={18} color="#16A34A" />
+                </View>
+                <View style={styles.profileInfoTextCol}>
+                  <Text style={styles.profileInfoLabel}>Estado de cuenta</Text>
+                  <Text style={[styles.profileInfoValue, { color: '#16A34A', fontWeight: '700' }]}>
+                    Aprobada y activa
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Botón de cerrar modal */}
+            <Button
+              title="Entendido"
+              onPress={() => setProfileModalVisible(false)}
+              style={styles.profileModalCloseBtn}
+            />
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -592,5 +656,109 @@ const styles = StyleSheet.create({
     color: '#1E3A8A',
     fontWeight: '700',
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  profileModalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  profileModalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  profileAvatarCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 2,
+    borderColor: '#BFDBFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  profileModalTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  profileModalRole: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1E3A8A',
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 6,
+    letterSpacing: 0.5,
+  },
+  profileInfoList: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginBottom: 20,
+  },
+  profileInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 12,
+  },
+  profileInfoItemLast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 12,
+  },
+  profileInfoIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileInfoTextCol: {
+    flex: 1,
+  },
+  profileInfoLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 1,
+  },
+  profileInfoValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  profileModalCloseBtn: {
+    backgroundColor: '#1E3A8A',
+    borderRadius: 10,
+    paddingVertical: 12,
   },
 });

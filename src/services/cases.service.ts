@@ -192,6 +192,12 @@ export const CasesService = {
         .single();
 
       if (caseError || !caseData) {
+        if (caseError?.code === '23505') {
+          return {
+            data: null,
+            error: 'Este reporte ya cuenta con un expediente de caso abierto o vinculado.',
+          };
+        }
         return { data: null, error: caseError?.message || 'Error al crear el caso formal.' };
       }
 

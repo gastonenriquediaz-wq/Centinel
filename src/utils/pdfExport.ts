@@ -4,6 +4,7 @@ import * as Sharing from 'expo-sharing';
 import { File, Paths } from 'expo-file-system';
 import { Case, CaseAct, Institution, Profile } from '../types/database.types';
 import { getActTypeLabel } from './textMigration';
+import { useAuthStore } from '../store/auth.store';
 
 function escapeHtml(raw?: string | null): string {
   if (!raw) return '';
@@ -897,43 +898,49 @@ function buildCaseDossierHtml(params: {
 }
 
 async function generateAndSharePdfHtml(html: string, baseFileName: string, dialogTitle: string): Promise<void> {
-  if (Platform.OS === 'web') {
-    await Print.printAsync({ html });
-    return;
-  }
-
-  // En Expo Go (Android), Print.printToFileAsync guarda en context.cacheDir/Print,
-  // que está fuera del directorio con permisos de FilePermissionService para ExpoSharing.
-  // Al pedir base64: true, PrintModule lee el PDF directamente sin restricción de sandbox
-  // y luego lo escribimos en Paths.cache (appContext.cacheDirectory), donde ExpoSharing
-  // tiene permiso total de lectura y además conserva el nombre formal del archivo .pdf.
-  const { uri, base64 } = await Print.printToFileAsync({
-    html,
-    base64: true,
-  });
-
-  let shareUri = uri;
-  if (base64) {
-    try {
-      const cleanName = `${sanitizeFileName(baseFileName) || 'Documento_Centinel'}.pdf`;
-      const targetFile = new File(Paths.cache, cleanName);
-      targetFile.create({ overwrite: true, intermediates: true });
-      targetFile.writeSync(base64, { encoding: 'base64' });
-      shareUri = targetFile.uri;
-    } catch {
-      shareUri = uri;
+  const { setNativeDialogOpen } = useAuthStore.getState();
+  setNativeDialogOpen(true);
+  try {
+    if (Platform.OS === 'web') {
+      await Print.printAsync({ html });
+      return;
     }
-  }
 
-  const canShare = await Sharing.isAvailableAsync();
-  if (canShare) {
-    await Sharing.shareAsync(shareUri, {
-      mimeType: 'application/pdf',
-      dialogTitle,
-      UTI: 'com.adobe.pdf',
+    // En Expo Go (Android), Print.printToFileAsync guarda en context.cacheDir/Print,
+    // que está fuera del directorio con permisos de FilePermissionService para ExpoSharing.
+    // Al pedir base64: true, PrintModule lee el PDF directamente sin restricción de sandbox
+    // y luego lo escribimos en Paths.cache (appContext.cacheDirectory), donde ExpoSharing
+    // tiene permiso total de lectura y además conserva el nombre formal del archivo .pdf.
+    const { uri, base64 } = await Print.printToFileAsync({
+      html,
+      base64: true,
     });
-  } else {
-    await Print.printAsync({ html });
+
+    let shareUri = uri;
+    if (base64) {
+      try {
+        const cleanName = `${sanitizeFileName(baseFileName) || 'Documento_Centinel'}.pdf`;
+        const targetFile = new File(Paths.cache, cleanName);
+        targetFile.create({ overwrite: true, intermediates: true });
+        targetFile.writeSync(base64, { encoding: 'base64' });
+        shareUri = targetFile.uri;
+      } catch {
+        shareUri = uri;
+      }
+    }
+
+    const canShare = await Sharing.isAvailableAsync();
+    if (canShare) {
+      await Sharing.shareAsync(shareUri, {
+        mimeType: 'application/pdf',
+        dialogTitle,
+        UTI: 'com.adobe.pdf',
+      });
+    } else {
+      await Print.printAsync({ html });
+    }
+  } finally {
+    setNativeDialogOpen(false);
   }
 }
 
@@ -956,8 +963,14 @@ export async function printActDirectly(params: {
   caseItem?: Case | null;
   institution?: Institution | null;
 }): Promise<void> {
-  const html = buildActHtml(params);
-  await Print.printAsync({ html });
+  const { setNativeDialogOpen } = useAuthStore.getState();
+  setNativeDialogOpen(true);
+  try {
+    const html = buildActHtml(params);
+    await Print.printAsync({ html });
+  } finally {
+    setNativeDialogOpen(false);
+  }
 }
 
 export async function shareCaseDossierAsPdf(params: {

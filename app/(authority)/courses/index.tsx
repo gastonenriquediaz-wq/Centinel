@@ -9,14 +9,20 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
+  Modal,
+  Alert,
 } from 'react-native';
 import { router, useFocusEffect, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../src/components/ui/Card';
 import { Button } from '../../../src/components/ui/Button';
+import { Input } from '../../../src/components/ui/Input';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { CoursesService } from '../../../src/services/courses.service';
 import { Course, ShiftType } from '../../../src/types/database.types';
+
+const COURSE_YEARS = [1, 2, 3, 4, 5, 6, 7];
+const SHIFT_TYPES: ShiftType[] = ['Mañana', 'Tarde', 'Noche', 'Jornada Completa'];
 
 export default function CoursesListScreen() {
   const { profile } = useAuthStore();
@@ -27,6 +33,102 @@ export default function CoursesListScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [shiftFilter, setShiftFilter] = useState<'Todos' | ShiftType>('Todos');
+
+  // Modal para editar curso completo o eliminarlo
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [editYear, setEditYear] = useState<number>(1);
+  const [editDivision, setEditDivision] = useState('');
+  const [editShift, setEditShift] = useState<ShiftType>('Mañana');
+  const [editSchoolYear, setEditSchoolYear] = useState('');
+  const [editEstimatedCap, setEditEstimatedCap] = useState('');
+  const [savingCourse, setSavingCourse] = useState(false);
+  const [deletingCourse, setDeletingCourse] = useState(false);
+
+  const handleOpenEditCourse = (course: Course) => {
+    setEditingCourse(course);
+    setEditYear(course.year);
+    setEditDivision(course.division);
+    setEditShift(course.shift);
+    setEditSchoolYear(String(course.school_year));
+    setEditEstimatedCap(String(course.estimated_students || 30));
+  };
+
+  const handleSaveCourse = async () => {
+    if (!editingCourse) return;
+
+    if (!editDivision.trim()) {
+      Alert.alert('Dato requerido', 'Por favor, ingresá la división (ej: A, B, 1ra).');
+      return;
+    }
+
+    if (editDivision.trim().length > 15) {
+      Alert.alert('División demasiado larga', 'La división no puede superar los 15 caracteres.');
+      return;
+    }
+
+    const parsedSchoolYear = parseInt(editSchoolYear, 10);
+    if (isNaN(parsedSchoolYear) || parsedSchoolYear < 2024 || parsedSchoolYear > 2100) {
+      Alert.alert('Ciclo lectivo inválido', 'Ingresá un ciclo lectivo válido (entre 2024 y 2100).');
+      return;
+    }
+
+    const parsedCap = parseInt(editEstimatedCap, 10);
+    if (isNaN(parsedCap) || parsedCap <= 0 || parsedCap > 200) {
+      Alert.alert('Valor no válido', 'La cantidad estimada debe ser un número entre 1 y 200.');
+      return;
+    }
+
+    try {
+      setSavingCourse(true);
+      const updated = await CoursesService.updateCourse(editingCourse.id, {
+        year: editYear,
+        division: editDivision,
+        shift: editShift,
+        schoolYear: parsedSchoolYear,
+        estimatedStudents: parsedCap,
+      });
+      setCourses((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      setEditingCourse(null);
+      Alert.alert('Curso actualizado', 'Los datos del curso se actualizaron correctamente.');
+    } catch (err: any) {
+      Alert.alert('Error al actualizar', err.message || 'No se pudo actualizar el curso.');
+    } finally {
+      setSavingCourse(false);
+    }
+  };
+
+  const handleDeleteCourse = () => {
+    if (!editingCourse) return;
+
+    Alert.alert(
+      '¿Eliminar curso?',
+      `Esta acción eliminará permanentemente el curso ${editingCourse.year}° "${editingCourse.division}" (${editingCourse.shift}). Solo se puede realizar si no tiene estudiantes registrados.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sí, eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingCourse(true);
+              const result = await CoursesService.deleteCourse(editingCourse.id);
+              if (!result.success) {
+                Alert.alert('No se puede eliminar', result.error);
+                return;
+              }
+              setCourses((prev) => prev.filter((c) => c.id !== editingCourse.id));
+              setEditingCourse(null);
+              Alert.alert('Curso eliminado', 'El curso fue eliminado de la institución con éxito.');
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'No se pudo eliminar el curso.');
+            } finally {
+              setDeletingCourse(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const SHIFT_OPTIONS: ('Todos' | ShiftType)[] = [
     'Todos',
@@ -239,9 +341,19 @@ export default function CoursesListScreen() {
                     <Text style={styles.courseDetails}>
                       Turno: {item.shift} · Ciclo: {item.school_year}
                     </Text>
-                    <Text style={styles.courseCap}>
-                      Capacidad estimada: {item.estimated_students} estudiantes
-                    </Text>
+                    <View style={styles.courseCapRow}>
+                      <Text style={styles.courseCap}>
+                        Capacidad estimada: {item.estimated_students} estudiantes
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleOpenEditCourse(item)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.editCourseButton}
+                      >
+                        <Ionicons name="pencil" size={12} color="#1E3A8A" />
+                        <Text style={styles.editCourseText}>Editar / Eliminar</Text>
+                      </TouchableOpacity>
+                    </View>
 
                     <View style={styles.manageStudentsLink}>
                       <Text style={styles.manageStudentsLinkText}>
@@ -271,6 +383,134 @@ export default function CoursesListScreen() {
           )}
         </View>
       )}
+
+      {/* Modal para Editar Curso Completo o Eliminarlo */}
+      <Modal
+        visible={!!editingCourse}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingCourse(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <Card style={styles.modalCard}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.modalHeaderRow}>
+                <View style={styles.modalIconCircle}>
+                  <Ionicons name="pencil" size={20} color="#1E3A8A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalTitle}>Editar Datos del Curso</Text>
+                  <Text style={styles.modalSubtitleTop}>
+                    Modificá los datos o eliminá el curso si fue creado por error.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Selector de Año */}
+              <Text style={styles.inputGroupLabel}>Año escolar</Text>
+              <View style={styles.selectorRow}>
+                {COURSE_YEARS.map((y) => {
+                  const isSelected = editYear === y;
+                  return (
+                    <TouchableOpacity
+                      key={y}
+                      style={[styles.yearChip, isSelected && styles.yearChipActive]}
+                      onPress={() => setEditYear(y)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.yearChipText, isSelected && styles.yearChipTextActive]}>
+                        {y}°
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* División */}
+              <Input
+                label="División"
+                placeholder="Ej: A, B, 1ra, 2da"
+                value={editDivision}
+                onChangeText={setEditDivision}
+                autoCapitalize="characters"
+              />
+
+              {/* Selector de Turno */}
+              <Text style={styles.inputGroupLabel}>Turno</Text>
+              <View style={styles.selectorRow}>
+                {SHIFT_TYPES.map((sh) => {
+                  const isSelected = editShift === sh;
+                  return (
+                    <TouchableOpacity
+                      key={sh}
+                      style={[styles.shiftSelectChip, isSelected && styles.shiftSelectChipActive]}
+                      onPress={() => setEditShift(sh)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.shiftSelectChipText,
+                          isSelected && styles.shiftSelectChipTextActive,
+                        ]}
+                      >
+                        {sh}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Ciclo Lectivo */}
+              <Input
+                label="Ciclo lectivo (Año calendario)"
+                placeholder="Ej: 2026"
+                value={editSchoolYear}
+                onChangeText={setEditSchoolYear}
+                keyboardType="numeric"
+              />
+
+              {/* Capacidad Estimada */}
+              <Input
+                label="Cantidad estimada de estudiantes"
+                placeholder="Ej: 30"
+                helperText="Dato orientativo para estadísticas. No limita el registro."
+                value={editEstimatedCap}
+                onChangeText={setEditEstimatedCap}
+                keyboardType="numeric"
+              />
+
+              {/* Botón de Eliminar Curso (Protegido) */}
+              <TouchableOpacity
+                style={styles.deleteCourseBtn}
+                onPress={handleDeleteCourse}
+                disabled={deletingCourse || savingCourse}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                <Text style={styles.deleteCourseBtnText}>
+                  {deletingCourse ? 'Eliminando...' : 'Eliminar este curso'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Botones de Acción */}
+              <View style={styles.modalButtonsRow}>
+                <Button
+                  title="Cancelar"
+                  variant="outline"
+                  onPress={() => setEditingCourse(null)}
+                  style={styles.modalBtnHalf}
+                />
+                <Button
+                  title="Guardar Cambios"
+                  onPress={handleSaveCourse}
+                  loading={savingCourse}
+                  style={styles.modalBtnHalf}
+                />
+              </View>
+            </ScrollView>
+          </Card>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -501,5 +741,148 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 8,
+  },
+  courseCapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+    flexWrap: 'wrap',
+  },
+  editCourseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    gap: 4,
+  },
+  editCourseText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1E3A8A',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '90%',
+    padding: 20,
+    borderRadius: 16,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  modalIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalSubtitleTop: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  inputGroupLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  selectorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 12,
+  },
+  yearChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  yearChipActive: {
+    backgroundColor: '#1E3A8A',
+    borderColor: '#1E3A8A',
+  },
+  yearChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  yearChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  shiftSelectChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  shiftSelectChipActive: {
+    backgroundColor: '#1E3A8A',
+    borderColor: '#1E3A8A',
+  },
+  shiftSelectChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#334155',
+  },
+  shiftSelectChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  deleteCourseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 8,
+    marginTop: 6,
+    marginBottom: 14,
+  },
+  deleteCourseBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  modalBtnHalf: {
+    flex: 1,
   },
 });

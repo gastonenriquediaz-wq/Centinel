@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { ReportsService } from '../../../src/services/reports.service';
 import { supabase } from '../../../src/services/supabase';
 import { Report, ReportStatus } from '../../../src/types/database.types';
+import { useStealthStore } from '../../../src/store/stealth.store';
 
 type FilterType = 'all' | ReportStatus;
 
@@ -41,7 +43,25 @@ export default function StudentReportsList() {
   const [unreadTotalCount, setUnreadTotalCount] = useState(0);
   const [latestUnreadReportId, setLatestUnreadReportId] = useState<string | null>(null);
 
+  // Modo seguro / ocultamiento
+  const { loadStealthMode, setStealthHours, checkIfActive, isStealthActive } = useStealthStore();
+  const [hideModalVisible, setHideModalVisible] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [selectedHoursToHide, setSelectedHoursToHide] = useState<number | null>(null);
+
   const loadReports = useCallback(async () => {
+    // 1. Verificar si el modo ocultamiento está activo
+    await loadStealthMode();
+    if (checkIfActive()) {
+      setReports([]);
+      setUnreadReportIds(new Set());
+      setUnreadTotalCount(0);
+      setLatestUnreadReportId(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     if (!profile?.id) return;
     try {
       const { data, error } = await ReportsService.getStudentReports(profile.id);
@@ -77,7 +97,7 @@ export default function StudentReportsList() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [profile?.id]);
+  }, [profile?.id, loadStealthMode, checkIfActive]);
 
   useFocusEffect(
     useCallback(() => {
@@ -88,6 +108,28 @@ export default function StudentReportsList() {
   const onRefresh = () => {
     setRefreshing(true);
     loadReports();
+  };
+
+  const handleSelectHideHours = (hours: number) => {
+    setSelectedHoursToHide(hours);
+    setHideModalVisible(false);
+    setConfirmModalVisible(true);
+  };
+
+  const handleCancelConfirmation = () => {
+    setConfirmModalVisible(false);
+    setHideModalVisible(true); // Regresa a la ventana anterior con las opciones
+  };
+
+  const handleConfirmHide = async () => {
+    if (!selectedHoursToHide) return;
+    await setStealthHours(selectedHoursToHide);
+    setConfirmModalVisible(false);
+    // Vaciamos inmediatamente el estado de reportes para que la pantalla quede como nueva
+    setReports([]);
+    setUnreadReportIds(new Set());
+    setUnreadTotalCount(0);
+    setLatestUnreadReportId(null);
   };
 
   // Mapeo cronológico de identificadores REP-0001, REP-0002...
@@ -142,7 +184,22 @@ export default function StudentReportsList() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Mis reportes', headerBackTitle: 'Inicio' }} />
+      <Stack.Screen
+        options={{
+          title: 'Mis reportes',
+          headerBackTitle: 'Inicio',
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => setHideModalVisible(true)}
+              style={styles.headerHideBtn}
+              activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="eye-off-outline" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          ),
+        }}
+      />
 
       {/* 4_ Filtros en la parte superior */}
       <View style={styles.filtersWrapper}>
@@ -389,6 +446,115 @@ export default function StudentReportsList() {
           <Text style={styles.floatingButtonText}>Nuevo reporte</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Modal para Seleccionar Horas de Ocultamiento */}
+      <Modal
+        visible={hideModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHideModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Card style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalIconCircle}>
+                <Ionicons name="eye-off" size={24} color="#1E3A8A" />
+              </View>
+              <Text style={styles.modalTitle}>Ocultar mis reportes</Text>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Tus reportes y mensajes no se mostrarán en la aplicación durante el tiempo seleccionado, simulando que nunca realizaste reportes. Las autoridades escolares seguirán atendiendo tu situación con total normalidad.
+            </Text>
+
+            <View style={styles.hoursButtonsCol}>
+              <TouchableOpacity
+                style={styles.hourOptionBtn}
+                activeOpacity={0.7}
+                onPress={() => handleSelectHideHours(6)}
+              >
+                <View style={styles.hourTextCol}>
+                  <Text style={styles.hourOptionTitle}>Ocultar por 6 horas</Text>
+                  <Text style={styles.hourOptionSub}>Turno escolar completo habitual</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#1E3A8A" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.hourOptionBtn}
+                activeOpacity={0.7}
+                onPress={() => handleSelectHideHours(8)}
+              >
+                <View style={styles.hourTextCol}>
+                  <Text style={styles.hourOptionTitle}>Ocultar por 8 horas</Text>
+                  <Text style={styles.hourOptionSub}>Jornada escolar con contraturno</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#1E3A8A" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.hourOptionBtn}
+                activeOpacity={0.7}
+                onPress={() => handleSelectHideHours(12)}
+              >
+                <View style={styles.hourTextCol}>
+                  <Text style={styles.hourOptionTitle}>Ocultar por 12 horas</Text>
+                  <Text style={styles.hourOptionSub}>Hasta finalizar el día y volver a casa</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#1E3A8A" />
+              </TouchableOpacity>
+            </View>
+
+            <Button
+              title="Cancelar"
+              variant="outline"
+              onPress={() => setHideModalVisible(false)}
+              style={styles.modalCancelBtn}
+            />
+          </Card>
+        </View>
+      </Modal>
+
+      {/* Modal de Confirmación Secundaria */}
+      <Modal
+        visible={confirmModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelConfirmation}
+      >
+        <View style={styles.modalOverlay}>
+          <Card style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconCircle, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="alert-circle" size={24} color="#D97706" />
+              </View>
+              <Text style={styles.modalTitle}>Confirmar acción</Text>
+            </View>
+
+            <Text style={styles.confirmQuestion}>
+              ¿Seguro que deseas ocultar tus reportes por {selectedHoursToHide} horas?
+            </Text>
+
+            <Text style={styles.confirmExplanation}>
+              Durante este tiempo la pantalla simulará que no tienes reportes enviados. La escuela seguirá atendiendo tu situación con normalidad y los reportes volverán a estar visibles una vez transcurridas las {selectedHoursToHide} horas.
+            </Text>
+
+            <View style={styles.confirmButtonsRow}>
+              <Button
+                title="Cancelar"
+                variant="outline"
+                onPress={handleCancelConfirmation}
+                style={styles.confirmBtnHalf}
+              />
+              <Button
+                title="Confirmar"
+                onPress={handleConfirmHide}
+                style={styles.confirmBtnHalf}
+              />
+            </View>
+          </Card>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -654,6 +820,102 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  headerHideBtn: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 400,
+    padding: 22,
+    borderRadius: 16,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+  modalIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    textAlign: 'justify',
+    marginBottom: 18,
+  },
+  hoursButtonsCol: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  hourOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  hourTextCol: {
+    flex: 1,
+  },
+  hourOptionTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#1E3A8A',
+    marginBottom: 2,
+  },
+  hourOptionSub: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  modalCancelBtn: {
+    width: '100%',
+  },
+  confirmQuestion: {
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: '#0F172A',
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  confirmExplanation: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    textAlign: 'justify',
+    marginBottom: 20,
+  },
+  confirmButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  confirmBtnHalf: {
+    flex: 1,
   },
   emptyContainer: {
     flex: 1,

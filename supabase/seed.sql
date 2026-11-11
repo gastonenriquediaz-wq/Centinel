@@ -5,8 +5,10 @@
 INSERT INTO public.institutions (id, name, address, identification_code)
 VALUES (
   '00000000-0000-0000-0000-000000000001',
-  'Colegio Secundario Modelo San Martín',
+  'Colegio Secundario Modelo de Salta',
   'Av. Entre Ríos 1250, Salta, Argentina',
   'INST-SALTA-001'
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  updated_at = now();

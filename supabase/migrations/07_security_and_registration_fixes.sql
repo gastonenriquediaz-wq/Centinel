@@ -230,5 +230,32 @@ CREATE POLICY "Students can view own case metadata"
     )
   );
 
+-- 8. Endurecimiento RLS: exigir account_status = 'approved' para insertar reportes y mensajes
+DROP POLICY IF EXISTS "Students can create reports" ON public.reports;
+CREATE POLICY "Students can create reports"
+  ON public.reports FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    public.get_auth_user_role() = 'student' AND
+    public.get_auth_user_status() = 'approved' AND
+    student_id = auth.uid() AND
+    institution_id = public.get_auth_user_institution_id()
+  );
+
+DROP POLICY IF EXISTS "Students can insert messages on own reports" ON public.report_messages;
+CREATE POLICY "Students can insert messages on own reports"
+  ON public.report_messages FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    sender_id = auth.uid() AND
+    sender_role = 'student' AND
+    public.get_auth_user_status() = 'approved' AND
+    EXISTS (
+      SELECT 1 FROM public.reports r
+      WHERE r.id = report_messages.report_id
+        AND r.student_id = auth.uid()
+    )
+  );
+
 -- Notificar recarga de schema cache a PostgREST
 NOTIFY pgrst, 'reload schema';

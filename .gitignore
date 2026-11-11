@@ -43,3 +43,7 @@ yarn-error.*
 
 # Supabase CLI temp
 supabase/.temp/
+
+# Internal AI / documentation files
+AGENTS.md
+MEJORAS_Y_EVOLUCION_TESIS.md

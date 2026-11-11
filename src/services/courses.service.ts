@@ -148,6 +148,74 @@ export const CoursesService = {
   },
 
   /**
+   * Actualiza los datos de un curso existente (ano, division, turno, ciclo o capacidad).
+   */
+  async updateCourse(
+    courseId: string,
+    params: {
+      estimatedStudents?: number;
+      division?: string;
+      shift?: ShiftType;
+      year?: number;
+      schoolYear?: number;
+    }
+  ): Promise<Course> {
+    const updatePayload: any = {};
+    if (params.estimatedStudents !== undefined) updatePayload.estimated_students = params.estimatedStudents;
+    if (params.division !== undefined) updatePayload.division = params.division.trim().toUpperCase();
+    if (params.shift !== undefined) updatePayload.shift = params.shift;
+    if (params.year !== undefined) updatePayload.year = params.year;
+    if (params.schoolYear !== undefined) updatePayload.school_year = params.schoolYear;
+
+    const { data, error } = await supabase
+      .from('courses')
+      .update(updatePayload)
+      .eq('id', courseId)
+      .select('*')
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('Ya existe otro curso registrado con el mismo año, división, turno y ciclo lectivo.');
+      }
+      throw error;
+    }
+    return data;
+  },
+
+  /**
+   * Elimina un curso de forma segura verificando previamente que no tenga estudiantes registrados.
+   */
+  async deleteCourse(courseId: string): Promise<{ success: boolean; error?: string }> {
+    const { count, error: countError } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('course_id', courseId);
+
+    if (countError) {
+      throw countError;
+    }
+
+    if (count && count > 0) {
+      return {
+        success: false,
+        error: 'No se puede eliminar este curso porque ya cuenta con ' + count + ' estudiantes registrados. Primero debes reasignar a los alumnos a otro curso.',
+      };
+    }
+
+    const { error: deleteError } = await supabase
+      .from('courses')
+      .delete()
+      .eq('id', courseId);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    return { success: true };
+  },
+
+  /**
    * Genera un código QR temporal con vigencia de 5 minutos para un curso (RF-04).
    */
   async generateCourseQR(params: {
@@ -253,7 +321,7 @@ export const CoursesService = {
 
     // Intentar primero con la RPC validate_registration_code
     let { data, error } = await supabase.rpc('validate_registration_code', {
-      p_code: cleanAlpha.length === 10 ? cleanAlpha : trimmed,
+      p_code: tokenToValidate,
     });
 
     if (error) {

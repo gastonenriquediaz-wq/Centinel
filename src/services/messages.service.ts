@@ -104,18 +104,28 @@ export const MessagesService = {
    */
   async getUnreadStudentChatsCount(institutionId?: string): Promise<number> {
     try {
-      const { data: messages, error } = await supabase
+      let query = supabase
         .from('report_messages')
-        .select('sender_id, report_id')
+        .select(
+          institutionId
+            ? 'sender_id, report_id, reports!inner(institution_id)'
+            : 'sender_id, report_id'
+        )
         .eq('sender_role', 'student')
         .is('read_at', null);
+
+      if (institutionId) {
+        query = query.eq('reports.institution_id', institutionId);
+      }
+
+      const { data: messages, error } = await query;
 
       if (error || !messages || messages.length === 0) {
         return 0;
       }
 
       // Estudiantes únicos que enviaron mensajes no leídos
-      const uniqueStudents = new Set(messages.map((m) => m.sender_id));
+      const uniqueStudents = new Set((messages as any[]).map((m) => m.sender_id));
       return uniqueStudents.size;
     } catch {
       return 0;

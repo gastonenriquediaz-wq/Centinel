@@ -95,12 +95,14 @@ export default function CourseCodeScreen() {
 
   const handleCopyCode = async () => {
     if (!code) return;
+    const { setNativeDialogOpen } = useAuthStore.getState();
     try {
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(code);
         setCopied(true);
         Alert.alert('Código copiado', `El código "${code}" ha sido copiado.`);
       } else {
+        setNativeDialogOpen(true);
         await Share.share({
           message: `Código de registro Centinel para ${course ? `${course.year}° "${course.division}"` : 'el curso'}: ${code}`,
           title: 'Código de Registro Centinel',
@@ -110,6 +112,8 @@ export default function CourseCodeScreen() {
       setTimeout(() => setCopied(false), 3000);
     } catch {
       Alert.alert('Código de registro', `Código: ${code}`);
+    } finally {
+      setNativeDialogOpen(false);
     }
   };
 
